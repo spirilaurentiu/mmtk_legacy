@@ -1,0 +1,305 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>A harmonic oscillator term in pure Python &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="a-harmonic-oscillator-term-in-pure-python">
+<h1>A harmonic oscillator term in pure Python<a class="headerlink" href="#a-harmonic-oscillator-term-in-pure-python" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-python"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+ 21
+ 22
+ 23
+ 24
+ 25
+ 26
+ 27
+ 28
+ 29
+ 30
+ 31
+ 32
+ 33
+ 34
+ 35
+ 36
+ 37
+ 38
+ 39
+ 40
+ 41
+ 42
+ 43
+ 44
+ 45
+ 46
+ 47
+ 48
+ 49
+ 50
+ 51
+ 52
+ 53
+ 54
+ 55
+ 56
+ 57
+ 58
+ 59
+ 60
+ 61
+ 62
+ 63
+ 64
+ 65
+ 66
+ 67
+ 68
+ 69
+ 70
+ 71
+ 72
+ 73
+ 74
+ 75
+ 76
+ 77
+ 78
+ 79
+ 80
+ 81
+ 82
+ 83
+ 84
+ 85
+ 86
+ 87
+ 88
+ 89
+ 90
+ 91
+ 92
+ 93
+ 94
+ 95
+ 96
+ 97
+ 98
+ 99
+100
+101
+102
+103</pre></div></td><td class="code"><div class="highlight"><pre><span class="c"># Harmonic potential with respect to a fixed point in space</span>
+
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields.ForceField</span> <span class="kn">import</span> <span class="n">ForceField</span><span class="p">,</span> <span class="n">EnergyTerm</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">ParticleVector</span><span class="p">,</span> <span class="n">SymmetricPairTensor</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">delta</span>
+
+<span class="c">#</span>
+<span class="c"># Each force field term requires two classes. One represents the</span>
+<span class="c"># abstract force field (HarmonicOscillator in this example), it knows</span>
+<span class="c"># nothing about any molecular system to which it might be applied.</span>
+<span class="c"># The other one (HarmonicOscillatorTerm) stores all the parameters required</span>
+<span class="c"># for energy evaluation, and provides the actual code.</span>
+<span class="c">#</span>
+<span class="c"># When a force field is evaluated for the first time for a given universe,</span>
+<span class="c"># the method evaluatorTerms() of the force field is called. It creates</span>
+<span class="c"># the EnergyTerm objects. The method evaluate() of the energy term object</span>
+<span class="c"># is called for every energy evaluation. Consequently, as much of the</span>
+<span class="c"># computation as possible should be done outside of this method.</span>
+<span class="c">#</span>
+
+<span class="k">class</span> <span class="nc">HarmonicOscillatorTerm</span><span class="p">(</span><span class="n">EnergyTerm</span><span class="p">):</span>
+
+    <span class="c"># The __init__ method only remembers parameters. Note that</span>
+    <span class="c"># EnergyTerm.__init__ takes care of storing the name and the</span>
+    <span class="c"># universe object.</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">atom_index</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">):</span>
+        <span class="n">EnergyTerm</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;harmonic oscillator&#39;</span><span class="p">,</span> <span class="n">universe</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atom_index</span> <span class="o">=</span> <span class="n">atom_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">center</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span> <span class="o">=</span> <span class="n">force_constant</span>
+
+    <span class="c"># This method is called for every single energy evaluation, so make</span>
+    <span class="c"># it as efficient as possible. The parameters do_gradients and</span>
+    <span class="c"># do_force_constants are flags that indicate if gradients and/or</span>
+    <span class="c"># force constants are requested.</span>
+    <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">do_gradients</span><span class="p">,</span> <span class="n">do_force_constants</span><span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">configuration</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_index</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">center</span>
+        <span class="n">results</span><span class="p">[</span><span class="s">&#39;energy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="o">*</span><span class="p">(</span><span class="n">d</span><span class="o">*</span><span class="n">d</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">do_gradients</span><span class="p">:</span>
+            <span class="n">gradients</span> <span class="o">=</span> <span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+            <span class="n">gradients</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="o">*</span><span class="n">d</span>
+            <span class="n">results</span><span class="p">[</span><span class="s">&#39;gradients&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gradients</span>
+        <span class="k">if</span> <span class="n">do_force_constants</span><span class="p">:</span>
+            <span class="n">force_constants</span> <span class="o">=</span> <span class="n">SymmetricPairTensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+            <span class="n">force_constants</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">atom_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="o">*</span><span class="n">delta</span>
+            <span class="n">results</span><span class="p">[</span><span class="s">&#39;force_constants&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">force_constants</span>
+        <span class="k">return</span> <span class="n">results</span>
+
+<span class="k">class</span> <span class="nc">HarmonicOscillatorForceField</span><span class="p">(</span><span class="n">ForceField</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Harmonic potential with respect to a fixed point in space</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        @param atom: the atom on which the force field acts</span>
+<span class="sd">        @type atom: L{MMTK.ChemicalObjects.Atom}</span>
+<span class="sd">        @param center: the point to which the atom is attached by</span>
+<span class="sd">                       the harmonic potential</span>
+<span class="sd">        @type center: L{Scientific.Geometry.Vector}</span>
+<span class="sd">        @param force_constant: the force constant of the harmonic potential</span>
+<span class="sd">        @type force_constant: C{float}</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># Get the internal index of the atom if the argument is an</span>
+        <span class="c"># atom object. It is the index that is stored internally,</span>
+        <span class="c"># and when the force field is recreated from a specification</span>
+        <span class="c"># in a trajectory file, it is the index that is passed instead</span>
+        <span class="c"># of the atom object itself. Calling this method takes care</span>
+        <span class="c"># of all the necessary checks and conversions.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atom_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getAtomParameterIndices</span><span class="p">([</span><span class="n">atom</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c"># Store arguments that recreate the force field from a pickled</span>
+        <span class="c"># universe or from a trajectory.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_index</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">)</span>
+        <span class="c"># Initialize the ForceField class, giving a name to this one.</span>
+        <span class="n">ForceField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;harmonic_oscillator&#39;</span><span class="p">)</span>
+        <span class="c"># Store the parameters for later use.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">center</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span> <span class="o">=</span> <span class="n">force_constant</span>
+
+    <span class="c"># The following method is called by the energy evaluation engine</span>
+    <span class="c"># to inquire if this force field term has all the parameters it</span>
+    <span class="c"># requires. This is necessary for interdependent force field</span>
+    <span class="c"># terms. In our case, we just say &quot;yes&quot; immediately.</span>
+    <span class="k">def</span> <span class="nf">ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="c"># The following method is called by the energy evaluation engine</span>
+    <span class="c"># to obtain a list of the low-level evaluator objects (the C routines)</span>
+    <span class="c"># that handle the calculations.</span>
+    <span class="k">def</span> <span class="nf">evaluatorTerms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="c"># The subset evaluation mechanism does not make much sense for</span>
+        <span class="c"># this force field, so we just signal an error if someone</span>
+        <span class="c"># uses it by accident.</span>
+        <span class="k">if</span> <span class="n">subset1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">subset2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;sorry, no subsets here&quot;</span><span class="p">)</span>
+        <span class="c"># Here we pass all the parameters to the code</span>
+        <span class="c"># that handles energy calculations.</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">HarmonicOscillatorTerm</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">atom_index</span><span class="p">,</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">,</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="p">)]</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../../../../_sources/Examples/Forcefield/HarmonicOscillator/Python/HarmonicOscillatorFF.py.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

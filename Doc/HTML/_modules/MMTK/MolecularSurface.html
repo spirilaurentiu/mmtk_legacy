@@ -1,0 +1,308 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.MolecularSurface &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.MolecularSurface</h1><div class="highlight"><pre>
+<span class="c">#</span>
+<span class="c"># Copyright 2000 by Peter McCluskey (pcm@rahul.net).</span>
+<span class="c"># You may do anything you want with it, provided this notice is kept intact.</span>
+<span class="c">#</span>
+
+<span class="c"># This module is in part a replacement for the MolecularSurface MMTK module</span>
+<span class="c"># that uses the NSC code. It has a less restrictive license than the NSC code,</span>
+<span class="c"># and is mostly more flexible, but is probably slower and somewhat less</span>
+<span class="c"># accurate. It can run (slowly) without any of the C code. It has an</span>
+<span class="c"># additional routine surfacePointsAndGradients, which returns area, an</span>
+<span class="c"># &quot;up&quot; vector, and surface points for each atom.</span>
+
+
+<span class="c"># Modifications by Konrad Hinsen &lt;hinsen@cnrs-orleans.fr&gt;:</span>
+<span class="c"># - Replaced tabs by spaces</span>
+<span class="c"># - Added/adapted docstrings to MMTK conventions</span>
+<span class="c"># - Removed assignment of methods to class GroupOfAtoms</span>
+<span class="c"># - Use vectors in the return value of surfacePointsAndGradients</span>
+<span class="c"># - Replaced &quot;math&quot; module by &quot;Numeric&quot;</span>
+<span class="c"># - Renamed module _surface to MMTK_surface</span>
+<span class="c"># - Converted docstrings to epydoc</span>
+<span class="c"># - Changed first argument name from self to object</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Molecular surfaces and volumes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">surfm</span>
+<span class="kn">from</span> <span class="nn">MMTK.Collections</span> <span class="kn">import</span> <span class="n">Collection</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Vector</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+<div class="viewcode-block" id="surfaceAndVolume"><a class="viewcode-back" href="../../modules.html#MMTK.MolecularSurface.surfaceAndVolume">[docs]</a><span class="k">def</span> <span class="nf">surfaceAndVolume</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">probe_radius</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param object: a chemical object</span>
+<span class="sd">    :type object: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">    :param probe_radius: the distance from the vdW-radii of the atoms</span>
+<span class="sd">                         at which the surface is computed</span>
+<span class="sd">    :type probe_radius: float</span>
+<span class="sd">    :returns: the molecular surface and volume of object</span>
+<span class="sd">    :rtype: tuple</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">atoms</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+    <span class="n">smap</span> <span class="o">=</span> <span class="n">surfm</span><span class="o">.</span><span class="n">surface_atoms</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="n">probe_radius</span><span class="p">,</span> <span class="n">ret_fmt</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">tot_a</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">tot_v</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+        <span class="n">atom_data</span> <span class="o">=</span> <span class="n">smap</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+        <span class="n">tot_a</span> <span class="o">=</span> <span class="n">tot_a</span> <span class="o">+</span> <span class="n">atom_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">tot_v</span> <span class="o">=</span> <span class="n">tot_v</span> <span class="o">+</span> <span class="n">atom_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">tot_a</span><span class="p">,</span> <span class="n">tot_v</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="surfaceAtoms"><a class="viewcode-back" href="../../modules.html#MMTK.MolecularSurface.surfaceAtoms">[docs]</a><span class="k">def</span> <span class="nf">surfaceAtoms</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">probe_radius</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param object: a chemical object</span>
+<span class="sd">    :type object: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">    :param probe_radius: the distance from the vdW-radii of the atoms</span>
+<span class="sd">                         at which the surface is computed</span>
+<span class="sd">    :type probe_radius: float</span>
+<span class="sd">    :returns: a dictionary that maps the surface atoms to their</span>
+<span class="sd">              exposed surface areas</span>
+<span class="sd">    :rtype: dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">atoms</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+    <span class="n">smap</span> <span class="o">=</span> <span class="n">surfm</span><span class="o">.</span><span class="n">surface_atoms</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="n">probe_radius</span><span class="p">,</span> <span class="n">ret_fmt</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">surface_atoms</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+        <span class="n">area</span> <span class="o">=</span> <span class="n">smap</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">area</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="c"># we have a surface atom</span>
+            <span class="n">surface_atoms</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="n">area</span>
+    <span class="k">return</span> <span class="n">surface_atoms</span>
+</div>
+<div class="viewcode-block" id="surfacePointsAndGradients"><a class="viewcode-back" href="../../modules.html#MMTK.MolecularSurface.surfacePointsAndGradients">[docs]</a><span class="k">def</span> <span class="nf">surfacePointsAndGradients</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">probe_radius</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span> <span class="n">point_density</span> <span class="o">=</span> <span class="mi">258</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param object: a chemical object</span>
+<span class="sd">    :type object: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">    :param probe_radius: the distance from the vdW-radii of the atoms</span>
+<span class="sd">                         at which the surface is computed</span>
+<span class="sd">    :type probe_radius: float</span>
+<span class="sd">    :param point_density: the density of points that describe the surface</span>
+<span class="sd">    :type point_density: int</span>
+<span class="sd">    :returns: a dictionary that maps the surface atoms to a tuple</span>
+<span class="sd">              containing three surface-related quantities: the exposed surface</span>
+<span class="sd">              area, a list of points in the exposed surface, and a gradient</span>
+<span class="sd">              vector pointing outward from the surface.</span>
+<span class="sd">    :rtype: dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">atoms</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+    <span class="n">smap</span> <span class="o">=</span> <span class="n">surfm</span><span class="o">.</span><span class="n">surface_atoms</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="n">probe_radius</span><span class="p">,</span> <span class="n">ret_fmt</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+                               <span class="n">point_density</span> <span class="o">=</span> <span class="n">point_density</span><span class="p">)</span>
+    <span class="n">surface_data</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+        <span class="p">(</span><span class="n">area</span><span class="p">,</span> <span class="n">volume</span><span class="p">,</span> <span class="n">points1</span><span class="p">,</span> <span class="n">grad</span><span class="p">)</span> <span class="o">=</span> <span class="n">smap</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">area</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="c"># we have a surface atom</span>
+            <span class="n">surface_data</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">area</span><span class="p">,</span> <span class="nb">map</span><span class="p">(</span><span class="n">Vector</span><span class="p">,</span> <span class="n">points1</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="n">grad</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">surface_data</span>
+
+</div>
+<span class="k">class</span> <span class="nc">Contact</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">,</span> <span class="n">dist</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">=</span> <span class="n">a1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="n">a2</span>
+        <span class="k">if</span> <span class="n">dist</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dist</span> <span class="o">=</span> <span class="p">(</span><span class="n">a1</span><span class="o">.</span><span class="n">position</span><span class="p">()</span> <span class="o">-</span> <span class="n">a2</span><span class="o">.</span><span class="n">position</span><span class="p">())</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dist</span> <span class="o">=</span> <span class="n">dist</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">)[</span><span class="n">index</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__cmp__</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">dist</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">dist</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Contact(</span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">)</span>
+
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+<div class="viewcode-block" id="findContacts"><a class="viewcode-back" href="../../modules.html#MMTK.MolecularSurface.findContacts">[docs]</a><span class="k">def</span> <span class="nf">findContacts</span><span class="p">(</span><span class="n">object1</span><span class="p">,</span> <span class="n">object2</span><span class="p">,</span> <span class="n">contact_factor</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Identifies contacts between two molecules. A contact is defined as a pair</span>
+<span class="sd">    of atoms whose distance is less than contact_factor*(r1+r2+cutoff),</span>
+<span class="sd">    where r1 and r2 are the atomic van-der-Waals radii.</span>
+
+<span class="sd">    :param object1: a chemical object</span>
+<span class="sd">    :type object1: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">    :param object2: a chemical object</span>
+<span class="sd">    :type object2: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">    :param contact_factor: a scale factor in the contact distance criterion</span>
+<span class="sd">    :type contact_factor: float</span>
+<span class="sd">    :param cutoff: a constant in the contact distance criterion</span>
+<span class="sd">    :type cutoff: float</span>
+<span class="sd">    :returns: a list of Contact objects that describe atomic contacts</span>
+<span class="sd">              between object1 and object2. </span>
+<span class="sd">    :rtype: list</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">max_object1</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">object1</span><span class="o">.</span><span class="n">atomList</span><span class="p">())</span>
+    <span class="n">atoms</span> <span class="o">=</span> <span class="n">object1</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span> <span class="o">+</span> <span class="n">object2</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+    <span class="n">tup</span> <span class="o">=</span> <span class="n">surfm</span><span class="o">.</span><span class="n">get_atom_data</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">max_rad</span> <span class="o">=</span> <span class="n">tup</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                    <span class="c"># max vdW_radius</span>
+    <span class="n">atom_data</span> <span class="o">=</span> <span class="n">tup</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">nbors</span> <span class="o">=</span> <span class="n">surfm</span><span class="o">.</span><span class="n">NeighborList</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="n">contact_factor</span><span class="o">*</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">max_rad</span><span class="o">+</span><span class="n">cutoff</span><span class="p">),</span>
+                               <span class="n">atom_data</span><span class="p">)</span>
+    <span class="n">clist</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">done</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">index1</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="p">)):</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">index2</span><span class="p">,</span> <span class="n">dist2</span><span class="p">)</span> <span class="ow">in</span> <span class="n">nbors</span><span class="p">[</span><span class="n">index1</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">index1</span> <span class="o">&lt;</span> <span class="n">max_object1</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">index2</span> <span class="o">&lt;</span> <span class="n">max_object1</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">index1</span> <span class="o">&lt;</span> <span class="n">index2</span><span class="p">:</span>
+                    <span class="n">a1</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="n">index1</span><span class="p">]</span>
+                    <span class="n">a2</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="n">index2</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">a1</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="n">index2</span><span class="p">]</span>
+                    <span class="n">a2</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="n">index1</span><span class="p">]</span>
+                <span class="n">dist</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dist2</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">dist</span> <span class="o">&gt;=</span> <span class="n">contact_factor</span><span class="o">*</span><span class="p">(</span><span class="n">a1</span><span class="o">.</span><span class="n">vdW_radius</span> <span class="o">+</span> <span class="n">a2</span><span class="o">.</span><span class="n">vdW_radius</span> <span class="o">+</span> <span class="n">cutoff</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="o">.</span><span class="n">has_key</span><span class="p">((</span><span class="n">index1</span><span class="p">,</span> <span class="n">index2</span><span class="p">)):</span>
+                    <span class="n">clist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Contact</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">,</span> <span class="n">dist</span><span class="p">))</span>
+                    <span class="n">done</span><span class="p">[(</span><span class="n">index1</span><span class="p">,</span> <span class="n">index2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">clist</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    
+    <span class="kn">from</span> <span class="nn">MMTK.PDB</span> <span class="kn">import</span> <span class="n">PDBConfiguration</span>
+    <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Units</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+
+    <span class="n">target_filename</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">pdb_conf1</span> <span class="o">=</span> <span class="n">PDBConfiguration</span><span class="p">(</span><span class="n">target_filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-f&#39;</span><span class="p">:</span>
+        <span class="n">chains</span> <span class="o">=</span> <span class="n">pdb_conf1</span><span class="o">.</span><span class="n">createNucleotideChains</span><span class="p">()</span>
+        <span class="n">molecule_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">chains</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">clist</span> <span class="o">=</span> <span class="n">findContacts</span><span class="p">(</span><span class="n">chains</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">chains</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">molecule_names</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">mol</span><span class="p">)</span> <span class="ow">in</span> <span class="n">pdb_conf1</span><span class="o">.</span><span class="n">molecules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">mol</span><span class="p">:</span>
+                    <span class="n">molecule_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="n">pdb_conf1</span><span class="o">.</span><span class="n">createAll</span><span class="p">(</span><span class="n">molecule_names</span> <span class="o">=</span> <span class="n">molecule_names</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">molecule_names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">clist</span> <span class="o">=</span> <span class="n">findContacts</span><span class="p">(</span><span class="n">targets</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">targets</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">atoms</span> <span class="o">=</span> <span class="n">targets</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+                <span class="n">mid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
+                <span class="n">clist</span> <span class="o">=</span> <span class="n">findContacts</span><span class="p">(</span><span class="n">Collection</span><span class="p">(</span><span class="n">atoms</span><span class="p">[:</span><span class="n">mid</span><span class="p">]),</span>
+                                     <span class="n">Collection</span><span class="p">(</span><span class="n">atoms</span><span class="p">[</span><span class="n">mid</span><span class="p">:]))</span>
+        <span class="k">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">clist</span><span class="p">),</span> <span class="s">&#39;contacts&#39;</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">clist</span><span class="p">[:</span><span class="mi">8</span><span class="p">]:</span>
+            <span class="k">print</span> <span class="s">&#39;</span><span class="si">%-64s</span><span class="s"> </span><span class="si">%6.2f</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">dist</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">pdb_conf1</span><span class="o">.</span><span class="n">createAll</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-v&#39;</span><span class="p">:</span>
+            <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">surfaceAndVolume</span><span class="p">()</span>
+            <span class="k">print</span> <span class="s">&#39;surface area </span><span class="si">%.2f</span><span class="s"> volume </span><span class="si">%.2f</span><span class="s">&#39;</span> \
+                  <span class="o">%</span> <span class="p">(</span><span class="n">a</span><span class="o">/</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">v</span><span class="o">/</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-a&#39;</span><span class="p">:</span>
+            <span class="n">smap</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">surfaceAtoms</span><span class="p">(</span><span class="n">probe_radius</span> <span class="o">=</span> <span class="mf">1.4</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span>
+            <span class="k">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">smap</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span><span class="s">&#39;of&#39;</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">atomList</span><span class="p">()),</span><span class="s">&#39;atoms on surface&#39;</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-p&#39;</span><span class="p">:</span>
+            <span class="n">smap</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">surfacePointsAndGradients</span><span class="p">(</span><span class="n">probe_radius</span> <span class="o">=</span> <span class="mf">1.4</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">tup</span><span class="p">)</span> <span class="ow">in</span> <span class="n">smap</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">print</span> <span class="s">&#39;</span><span class="si">%-40.40s</span><span class="s"> </span><span class="si">%6.2f</span><span class="s"> </span><span class="si">%5d</span><span class="s"> </span><span class="si">%5.1f</span><span class="s"> </span><span class="si">%5.1f</span><span class="s"> </span><span class="si">%5.1f</span><span class="s">&#39;</span> \
+                      <span class="o">%</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">fullName</span><span class="p">(),</span> <span class="n">tup</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">tup</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                         <span class="n">tup</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">tup</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">tup</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">2</span><span class="p">])</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

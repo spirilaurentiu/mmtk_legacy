@@ -1,0 +1,191 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.ForceFields.SPCEFF &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.ForceFields.SPCEFF</h1><div class="highlight"><pre>
+<span class="c"># SPCE force field</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SPC/E force field for water simulations</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields</span> <span class="kn">import</span> <span class="n">MMForceField</span>
+
+
+<span class="k">class</span> <span class="nc">SPCEParameters</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">atom_type_property</span> <span class="o">=</span> <span class="s">&#39;spce_atom_type&#39;</span>
+    <span class="n">charge_property</span> <span class="o">=</span> <span class="s">&#39;spce_charge&#39;</span>
+    <span class="n">lennard_jones_1_4</span> <span class="o">=</span> <span class="mf">1.</span>
+    <span class="n">electrostatic_1_4</span> <span class="o">=</span> <span class="mf">1.</span>
+
+    <span class="k">def</span> <span class="nf">ljParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span> <span class="o">==</span> <span class="s">&#39;O&#39;</span><span class="p">:</span>
+            <span class="c"># TIP3: 0.6363936, 0.315075240657</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mf">0.650169580819</span><span class="p">,</span> <span class="mf">0.31655578902</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span> <span class="o">==</span> <span class="s">&#39;H&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unknown atom type &#39;</span> <span class="o">+</span> <span class="nb">type</span><span class="p">)</span>
+
+    <span class="c"># Bond and angle parameters from:</span>
+    <span class="c"># O. Telemann, B. Jonsson, S. Engstrom</span>
+    <span class="c"># Mol. Phys. 60(1), 193-203 (1987)</span>
+    <span class="k">def</span> <span class="nf">bondParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">at1</span><span class="p">,</span> <span class="n">at2</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">at1</span> <span class="o">==</span> <span class="s">&#39;O&#39;</span> <span class="ow">or</span> <span class="n">at2</span> <span class="o">==</span> <span class="s">&#39;O&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">463700.</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mf">0.163298086184</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">bondAngleParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">at1</span><span class="p">,</span> <span class="n">at2</span><span class="p">,</span> <span class="n">at3</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">at2</span> <span class="o">==</span> <span class="s">&#39;O&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mf">1.91061193216</span><span class="p">,</span> <span class="mf">383.</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mf">0.615490360716</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">dihedralParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">at1</span><span class="p">,</span> <span class="n">at2</span><span class="p">,</span> <span class="n">at3</span><span class="p">,</span> <span class="n">at4</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)]</span>
+    
+    <span class="k">def</span> <span class="nf">improperParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">at1</span><span class="p">,</span> <span class="n">at2</span><span class="p">,</span> <span class="n">at3</span><span class="p">,</span> <span class="n">at4</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)]</span>
+
+
+<div class="viewcode-block" id="SPCEForceField"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.SPCEFF.SPCEForceField">[docs]</a><span class="k">class</span> <span class="nc">SPCEForceField</span><span class="p">(</span><span class="n">MMForceField</span><span class="o">.</span><span class="n">MMForceField</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Force field for water simulations with the SPC/E model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lj_options</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">es_options</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param lj_options: parameters for Lennard-Jones</span>
+<span class="sd">                           interactions; one of:</span>
+
+<span class="sd">                            * a number, specifying the cutoff</span>
+<span class="sd">                            * None, meaning the default method</span>
+<span class="sd">                              (no cutoff; inclusion of all</span>
+<span class="sd">                              pairs, using the minimum-image</span>
+<span class="sd">                              conventions for periodic universes)</span>
+<span class="sd">                            * a dictionary with an entry &quot;method&quot;</span>
+<span class="sd">                              which specifies the calculation</span>
+<span class="sd">                              method as either &quot;direct&quot; (all pair</span>
+<span class="sd">                              terms) or &quot;cutoff&quot;, with the cutoff</span>
+<span class="sd">                              specified by the dictionary</span>
+<span class="sd">                              entry &quot;cutoff&quot;.</span>
+
+<span class="sd">        :param es_options: parameters for electrostatic</span>
+<span class="sd">                           interactions; one of:</span>
+
+<span class="sd">                            * a number, specifying the cutoff</span>
+<span class="sd">                            * None, meaning the default method</span>
+<span class="sd">                              (all pairs without cutoff for</span>
+<span class="sd">                              non-periodic system, Ewald summation</span>
+<span class="sd">                              for periodic systems)</span>
+<span class="sd">                            * a dictionary with an entry &quot;method&quot;</span>
+<span class="sd">                              which specifies the calculation</span>
+<span class="sd">                              method as either &quot;direct&quot; (all pair</span>
+<span class="sd">                              terms), &quot;cutoff&quot; (with the cutoff</span>
+<span class="sd">                              specified by the dictionary</span>
+<span class="sd">                              entry &quot;cutoff&quot;), &quot;ewald&quot; (Ewald</span>
+<span class="sd">                              summation, only for periodic</span>
+<span class="sd">                              universes), &quot;screened&quot; or</span>
+<span class="sd">                              &quot;multipole&quot; (fast-multipole method).</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">MMForceField</span><span class="o">.</span><span class="n">MMForceField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;SPCE&#39;</span><span class="p">,</span> <span class="n">SPCEParameters</span><span class="p">(),</span>
+                                           <span class="n">lj_options</span><span class="p">,</span> <span class="n">es_options</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="n">lj_options</span><span class="p">,</span> <span class="n">es_options</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

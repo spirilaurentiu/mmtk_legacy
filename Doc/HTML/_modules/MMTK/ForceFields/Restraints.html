@@ -1,0 +1,397 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.ForceFields.Restraints &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.ForceFields.Restraints</h1><div class="highlight"><pre>
+<span class="c"># Harmonic restraint terms that can be added to a force field.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Harmonic restraint terms that can be added to any force field</span>
+
+<span class="sd">Example::</span>
+
+<span class="sd"> from MMTK import *</span>
+<span class="sd"> from MMTK.ForceFields import Amber99ForceField</span>
+<span class="sd"> from MMTK.ForceFields.Restraints import HarmonicDistanceRestraint</span>
+<span class="sd"> </span>
+<span class="sd"> universe = InfiniteUniverse()</span>
+<span class="sd"> universe.protein = Protein(&#39;bala1&#39;)</span>
+<span class="sd"> force_field = Amber99ForceField() + \</span>
+<span class="sd">               HarmonicDistanceRestraint(universe.protein[0][1].peptide.N,</span>
+<span class="sd">                                         universe.protein[0][1].peptide.O,</span>
+<span class="sd">                                         0.5, 10.)</span>
+<span class="sd"> universe.setForceField(force_field)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK.ChemicalObjects</span> <span class="kn">import</span> <span class="n">isChemicalObject</span>
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields.ForceField</span> <span class="kn">import</span> <span class="n">ForceField</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">MMTK_forcefield</span> <span class="kn">import</span> <span class="n">HarmonicDistanceTerm</span><span class="p">,</span> <span class="n">HarmonicAngleTerm</span><span class="p">,</span> \
+                            <span class="n">CosineDihedralTerm</span>
+<span class="kn">from</span> <span class="nn">MMTK_restraints</span> <span class="kn">import</span> <span class="n">HarmonicCMTrapTerm</span><span class="p">,</span> <span class="n">HarmonicCMDistanceTerm</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+<div class="viewcode-block" id="HarmonicDistanceRestraint"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.Restraints.HarmonicDistanceRestraint">[docs]</a><span class="k">class</span> <span class="nc">HarmonicDistanceRestraint</span><span class="p">(</span><span class="n">ForceField</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Harmonic distance restraint between two atoms</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj1</span><span class="p">,</span> <span class="n">obj2</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">,</span>
+                 <span class="n">nb_exclusion</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param obj1: the object defining center-of-mass 1</span>
+<span class="sd">        :type obj1: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">        :param obj2: the object defining center-of-mass 2</span>
+<span class="sd">        :type obj2: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">        :param distance: the distance between cm 1 and cm2 at which</span>
+<span class="sd">                         the restraint is zero</span>
+<span class="sd">        :type distance: float</span>
+<span class="sd">        :param force_constant: the force constant of the restraint term.</span>
+<span class="sd">                               The functional form of the restraint is</span>
+<span class="sd">                               force_constant*((cm1-cm2).length()-distance)**2,</span>
+<span class="sd">                               where cm1 and cm2 are the centrer-of-mass</span>
+<span class="sd">                               positions of the two objects.</span>
+<span class="sd">        :type force_constant: float</span>
+<span class="sd">        :param nb_exclussion: if True, non-bonded interactions between</span>
+<span class="sd">                              the restrained atoms are suppressed, as</span>
+<span class="sd">                              for a chemical bond</span>
+<span class="sd">        :type nb_exclussion: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj2</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="c"># Older MMTK versions admitted only single atoms and</span>
+            <span class="c"># stored single indices. Support this mode for opening</span>
+            <span class="c"># trajectories made with those versions</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj2</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">isChemicalObject</span><span class="p">(</span><span class="n">obj1</span><span class="p">):</span>
+            <span class="n">obj1</span> <span class="o">=</span> <span class="n">obj1</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">isChemicalObject</span><span class="p">(</span><span class="n">obj2</span><span class="p">):</span>
+            <span class="n">obj2</span> <span class="o">=</span> <span class="n">obj2</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getAtomParameterIndices</span><span class="p">(</span><span class="n">obj1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getAtomParameterIndices</span><span class="p">(</span><span class="n">obj2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">nb_exclusion</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span>
+                             <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Non-bonded exclusion possible only &quot;</span>
+                             <span class="s">&quot;between single-atom objects&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">,</span>
+                          <span class="n">distance</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">,</span> <span class="n">nb_exclusion</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distance</span> <span class="o">=</span> <span class="n">distance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span> <span class="o">=</span> <span class="n">force_constant</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nb_exclusion</span> <span class="o">=</span> <span class="n">nb_exclusion</span>
+        <span class="n">ForceField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;harmonic distance restraint&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">declareDependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="n">global_data</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;nb_exclusions&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">universe</span><span class="o">.</span><span class="n">is_periodic</span> <span class="ow">and</span> \
+                <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Center-of-mass restraints not implemented&quot;</span>
+                             <span class="s">&quot; for periodic universes&quot;</span><span class="p">)</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="n">s1</span><span class="p">,</span> <span class="n">s2</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">),</span> <span class="p">(</span><span class="n">subset2</span><span class="p">,</span> <span class="n">subset1</span><span class="p">)]:</span>
+            <span class="k">if</span> <span class="n">s1</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">s1</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">ok</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">break</span>
+            <span class="n">s1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">s1</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">())</span>
+            <span class="n">diff1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">)</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span>
+            <span class="n">s2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">s2</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">())</span>
+            <span class="n">diff2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">)</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">diff1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">diff2</span><span class="p">:</span>
+                <span class="c"># Each object is in one of the subsets</span>
+                <span class="n">ok</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">diff1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">diff1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">))</span> \
+                    <span class="ow">or</span> <span class="p">(</span><span class="n">diff2</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">diff2</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">)):</span>
+                <span class="c"># The subset contains some but not all of the</span>
+                <span class="c"># restrained atoms.</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Restrained atoms partially &quot;</span>
+                                 <span class="s">&quot;in a subset&quot;</span><span class="p">)</span>
+        <span class="n">global_data</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;initialized&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
+            <span class="c"># The objects are not in the subsets, so there is no</span>
+            <span class="c"># contribution to the total energy.</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s">&#39;harmonic_distance_cm&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nb_exclusion</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> 
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="n">i1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">i2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">global_data</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;excluded_pairs&#39;</span><span class="p">,</span> <span class="n">Utility</span><span class="o">.</span><span class="n">normalizePair</span><span class="p">((</span><span class="n">i1</span><span class="p">,</span> <span class="n">i2</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c"># Keep the old format for the single-atom case for best</span>
+            <span class="c"># compatibility with older MMTK versions.</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s">&#39;harmonic_distance_term&#39;</span><span class="p">:</span>
+                    <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                      <span class="bp">self</span><span class="o">.</span><span class="n">distance</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="p">)]}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s">&#39;harmonic_distance_cm&#39;</span><span class="p">:</span>
+                    <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices_2</span><span class="p">,</span>
+                      <span class="bp">self</span><span class="o">.</span><span class="n">distance</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="p">)]}</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorTerms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluatorParameters</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span>
+                                          <span class="n">global_data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s">&#39;harmonic_distance_term&#39;</span><span class="p">):</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s">&#39;harmonic_distance_term&#39;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">HarmonicDistanceTerm</span><span class="p">(</span><span class="n">universe</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span>
+                                         <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="p">[:</span><span class="mi">2</span><span class="p">]]),</span>
+                                         <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">:]]),</span>
+                                         <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s">&#39;harmonic_distance_cm&#39;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">HarmonicCMDistanceTerm</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span>
+                                           <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                                           <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                                           <span class="n">universe</span><span class="o">.</span><span class="n">masses</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                           <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                                           <span class="n">p</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+                    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">description</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;ForceFields.Restraints.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span> <span class="o">+</span> \
+               <span class="sb">`self.arguments`</span>
+
+</div>
+<div class="viewcode-block" id="HarmonicAngleRestraint"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.Restraints.HarmonicAngleRestraint">[docs]</a><span class="k">class</span> <span class="nc">HarmonicAngleRestraint</span><span class="p">(</span><span class="n">ForceField</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Harmonic angle restraint between three atoms</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param atom1: first atom</span>
+<span class="sd">        :type atom1: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom2: second (central) atom</span>
+<span class="sd">        :type atom2: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom3: third atom</span>
+<span class="sd">        :type atom3: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param angle: the angle at which the restraint is zero</span>
+<span class="sd">        :type angle: float</span>
+<span class="sd">        :param force_constant: the force constant of the restraint term.</span>
+<span class="sd">                               The functional form of the restraint is</span>
+<span class="sd">                               force_constant*(phi-angle)**2, where</span>
+<span class="sd">                               phi is the angle atom1-atom2-atom3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index3</span> <span class="o">=</span> \
+                    <span class="bp">self</span><span class="o">.</span><span class="n">getAtomParameterIndices</span><span class="p">((</span><span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index3</span><span class="p">,</span>
+                          <span class="n">angle</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">)</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">angle</span> <span class="o">=</span> <span class="n">angle</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span> <span class="o">=</span> <span class="n">force_constant</span>
+        <span class="n">ForceField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;harmonic angle restraint&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s">&#39;harmonic_angle_term&#39;</span><span class="p">:</span>
+                 <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">index1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index3</span><span class="p">,</span>
+                   <span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="p">)]}</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorTerms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluatorParameters</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span>
+                                          <span class="n">global_data</span><span class="p">)[</span><span class="s">&#39;harmonic_angle_term&#39;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">][:</span><span class="mi">3</span><span class="p">]])</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">:]])</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">HarmonicAngleTerm</span><span class="p">(</span><span class="n">universe</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)]</span>
+</div>
+<div class="viewcode-block" id="HarmonicDihedralRestraint"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.Restraints.HarmonicDihedralRestraint">[docs]</a><span class="k">class</span> <span class="nc">HarmonicDihedralRestraint</span><span class="p">(</span><span class="n">ForceField</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Harmonic dihedral angle restraint between four atoms</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">,</span> <span class="n">atom4</span><span class="p">,</span> <span class="n">dihedral</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param atom1: first atom</span>
+<span class="sd">        :type atom1: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom2: second (axis) atom</span>
+<span class="sd">        :type atom2: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom3: third (axis)atom</span>
+<span class="sd">        :type atom3: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom4: fourth atom</span>
+<span class="sd">        :type atom4: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param dihedral: the dihedral angle at which the restraint is zero</span>
+<span class="sd">        :type dihedral: float</span>
+<span class="sd">        :param force_constant: the force constant of the restraint term.</span>
+<span class="sd">                               The functional form of the restraint is</span>
+<span class="sd">                               force_constant*(phi-abs(dihedral))**2, where</span>
+<span class="sd">                               phi is the dihedral angle</span>
+<span class="sd">                               atom1-atom2-atom3-atom4.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index4</span> <span class="o">=</span> \
+                   <span class="bp">self</span><span class="o">.</span><span class="n">getAtomParameterIndices</span><span class="p">((</span><span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">,</span> <span class="n">atom4</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dihedral</span> <span class="o">=</span> <span class="n">dihedral</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span> <span class="o">=</span> <span class="n">force_constant</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index4</span><span class="p">,</span>
+                          <span class="n">dihedral</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">)</span> 
+        <span class="n">ForceField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;harmonic dihedral restraint&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s">&#39;cosine_dihedral_term&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">index1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index2</span><span class="p">,</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">index3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index4</span><span class="p">,</span>
+                                          <span class="mf">0.</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dihedral</span><span class="p">,</span>
+                                          <span class="mf">0.</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="p">)]}</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorTerms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluatorParameters</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span>
+                                          <span class="n">global_data</span><span class="p">)[</span><span class="s">&#39;cosine_dihedral_term&#39;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">][:</span><span class="mi">4</span><span class="p">]])</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">4</span><span class="p">:]])</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">CosineDihedralTerm</span><span class="p">(</span><span class="n">universe</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)]</span>
+</div>
+<div class="viewcode-block" id="HarmonicTrapForceField"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.Restraints.HarmonicTrapForceField">[docs]</a><span class="k">class</span> <span class="nc">HarmonicTrapForceField</span><span class="p">(</span><span class="n">ForceField</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Harmonic potential with respect to a fixed point in space</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param obj: the object on whose center of mass the force field acts</span>
+<span class="sd">        :type obj: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">        :param center: the point to which the atom is attached by</span>
+<span class="sd">                        the harmonic potential</span>
+<span class="sd">        :type center: Scientific.Geometry.Vector</span>
+<span class="sd">        :param force_constant: the force constant of the harmonic potential</span>
+<span class="sd">        :type force_constant: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">isChemicalObject</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atom_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getAtomParameterIndices</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">force_constant</span><span class="p">)</span>
+        <span class="n">ForceField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;harmonic_trap&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">center</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span> <span class="o">=</span> <span class="n">force_constant</span>
+
+    <span class="k">def</span> <span class="nf">ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">universe</span><span class="o">.</span><span class="n">is_periodic</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Center-of-mass restraints not implemented&quot;</span>
+                             <span class="s">&quot; for periodic universes&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">subset</span> <span class="ow">in</span> <span class="p">[</span><span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">subset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">subset</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">subset</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">())</span>
+                <span class="n">diff</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices</span><span class="p">)</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">subset</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">diff</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices</span><span class="p">):</span>
+                        <span class="c"># The subset doesn&#39;t contain the restrained atoms.</span>
+                        <span class="k">return</span> <span class="p">{</span><span class="s">&#39;harmonic_trap_cm&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c"># The subset contains some but not all of the</span>
+                        <span class="c"># restrained atoms.</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Restrained atoms partially &quot;</span>
+                                         <span class="s">&quot;in a subset&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s">&#39;harmonic_trap_cm&#39;</span><span class="p">:</span>
+                <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">atom_indices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_constant</span><span class="p">)]}</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorTerms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluatorParameters</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span>
+                                          <span class="n">global_data</span><span class="p">)[</span><span class="s">&#39;harmonic_trap_cm&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">HarmonicCMTrapTerm</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span>
+                                   <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                                   <span class="n">universe</span><span class="o">.</span><span class="n">masses</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                   <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                   <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">]</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

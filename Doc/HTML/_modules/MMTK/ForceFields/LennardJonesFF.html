@@ -1,0 +1,156 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.ForceFields.LennardJonesFF &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.ForceFields.LennardJonesFF</h1><div class="highlight"><pre>
+<span class="c"># A Lennard-Jones force fields for simple liquids</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Lennard-Jones force field for simple liquids</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields.NonBondedInteractions</span> <span class="kn">import</span> <span class="n">LJForceField</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="c">#</span>
+<span class="c"># The force field class</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="LennardJonesForceField"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.LennardJonesFF.LennardJonesForceField">[docs]</a><span class="k">class</span> <span class="nc">LennardJonesForceField</span><span class="p">(</span><span class="n">LJForceField</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Lennard-Jones force field</span>
+
+<span class="sd">    The Lennard-Jones parameters are taken from the atom attributes</span>
+<span class="sd">    LJ_radius and LJ_energy. The pair interaction energy has the form</span>
+<span class="sd">    U(r)=4*LJ_energy*((LJ_radius/r)**12-(LJ_radius/r)**6).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param cutoff: a cutoff value or None, meaning no cutoff.</span>
+<span class="sd">                       Pair interactions in periodic systems are calculated</span>
+<span class="sd">                       using the minimum-image convention; the cutoff should</span>
+<span class="sd">                       therefore never be larger than half the smallest edge</span>
+<span class="sd">                       length of the elementary cell.</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="n">cutoff</span><span class="p">,</span> <span class="p">)</span>
+        <span class="n">LJForceField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;LJ&#39;</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lj_14_factor</span> <span class="o">=</span> <span class="mf">1.</span>
+
+    <span class="k">def</span> <span class="nf">ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">collectParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">global_data</span><span class="p">,</span> <span class="s">&#39;lj_parameters&#39;</span><span class="p">):</span>
+            <span class="n">parameters</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">universe</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">o</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+                    <span class="n">parameters</span><span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">symbol</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">LJ_energy</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">LJ_radius</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">global_data</span><span class="o">.</span><span class="n">lj_parameters</span> <span class="o">=</span> <span class="n">parameters</span>
+
+    <span class="k">def</span> <span class="nf">_atomType</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">,</span> <span class="n">atom</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">atom</span><span class="o">.</span><span class="n">symbol</span>
+
+    <span class="k">def</span> <span class="nf">_ljParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">global_data</span><span class="o">.</span><span class="n">lj_parameters</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collectParameters</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">global_data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">LJForceField</span><span class="o">.</span><span class="n">evaluatorParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span>
+                                                <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

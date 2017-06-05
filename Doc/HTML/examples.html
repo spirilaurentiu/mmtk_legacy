@@ -1,0 +1,328 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Code Examples &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="index.html" />
+    <link rel="next" title="Module Reference" href="modules.html" />
+    <link rel="prev" title="Glossary" href="glossary.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="modules.html" title="Module Reference"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="glossary.html" title="Glossary"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <span class="target" id="examples"></span><div class="section" id="code-examples">
+<h1>Code Examples<a class="headerlink" href="#code-examples" title="Permalink to this headline">¶</a></h1>
+<p>One of the best ways to learn how to use a new tool is to look at
+examples. The examples given in this manual were adapted from
+real-life MMTK applications. They are also contained in the
+MMTK distribution (directory &#8220;Examples&#8221;) for direct use and modification.</p>
+<p>The example molecules, system sizes, parameters, etc.,
+were chosen to reduce execution time as much as possible, in order to
+enable you to run the examples interactively step by step to see how
+they work. If you plan to modify an example program for your own use,
+don&#8217;t forget to check all parameters carefully to make sure that you
+obtain reasonable results.</p>
+<ul class="simple" id="example-moleculardynamics">
+<li>Molecular Dynamics examples<ul>
+<li>The program
+<a class="reference internal" href="Examples/MolecularDynamics/argon.py.html"><em>argon.py</em></a>
+contains a simulation of liquid argon at constant temperature and
+pressure.</li>
+<li>The program
+<a class="reference internal" href="Examples/MolecularDynamics/protein.py.html"><em>protein.py</em></a>
+contains a simulation of a small (very small) protein in vacuum.</li>
+<li>The program
+<a class="reference internal" href="Examples/MolecularDynamics/restart.py.html"><em>restart.py</em></a>
+shows how the simulation started in
+<a class="reference internal" href="Examples/MolecularDynamics/protein.py.html"><em>protein.py</em></a>
+can be continued.</li>
+<li>The program
+<a class="reference internal" href="Examples/MolecularDynamics/solvation.py.html"><em>solvation.py</em></a>
+contains the solvation of a protein by water molecules.</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-montecarlo">
+<li>Monte-Carlo examples<ul>
+<li>The program
+<a class="reference internal" href="Examples/MonteCarlo/backbone.py.html"><em>backbone.py</em></a>
+generates an ensemble of backbone configuration (C-alpha atoms only)
+for a protein.</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-trajectories">
+<li>Trajectory examples<ul>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/snapshot.py.html"><em>snapshot.py</em></a>
+shows how a trajectory can be built up step by step from arbitrary
+data.</li>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/dcd_import.py.html"><em>dcd_import.py</em></a>
+converts a trajectory in DCD format (used by the programs CHARMM,
+X-Plor, and NAMD) to MMTK&#8217;s format.</li>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/dcd_export.py.html"><em>dcd_export.py</em></a>
+converts an MMTK trajectory to DCD format (used by the programs CHARMM,
+X-Plor, and NAMD).</li>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/pdb_export.py.html"><em>pdb_export.py</em></a>
+converts an MMTK trajectory to a sequence of PDB files.</li>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/trajectory_average.py.html"><em>trajectory_average.py</em></a>
+calculates an average structure from a trajectory.</li>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/trajectory_extraction.py.html"><em>trajectory_extraction.py</em></a>
+reads a trajectory and writes a new one containing only a subset of the
+original universe.</li>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/view_trajectory.py.html"><em>view_trajectory.py</em></a>
+shows an animation of a trajectory, provided that an external molecule
+viewer with animation is available.</li>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/calpha_trajectory.py.html"><em>calpha_trajectory.py</em></a>
+shows how a much smaller C<sub>α</sub>-only trajectory can be extracted from
+a trajectory containing one or more proteins.</li>
+<li>The program
+<a class="reference internal" href="Examples/Trajectories/fluctuations.py.html"><em>fluctuations.py</em></a>
+shows how to calculate atomic fluctuations from a trajectory file.</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-normalmodes">
+<li>Normal mode examples</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>The program
+<a class="reference internal" href="Examples/NormalModes/modes.py.html"><em>modes.py</em></a>
+contains a standard normal mode calculation for a small protein.</li>
+<li>The program
+<a class="reference internal" href="Examples/NormalModes/constrained_modes.py.html"><em>constrained_modes.py</em></a>
+contains a normal mode calculation for a small protein using a model
+in which each amino acid residue is rigid.</li>
+<li>The program
+<a class="reference internal" href="Examples/NormalModes/calpha_modes.py.html"><em>calpha_modes.py</em></a>
+contains a normal mode calculation for a mid-size protein using a
+C<sub>α</sub> model and an elastic network model.</li>
+<li>The program
+<a class="reference internal" href="Examples/NormalModes/harmonic_force_field.py.html"><em>harmonic_force_field.py</em></a>
+contains a normal mode calculation for a protein using a detailed
+but still simple harmonic force field.</li>
+</ul>
+</div></blockquote>
+<ul class="simple" id="example-proteins">
+<li>Protein examples<ul>
+<li>The program
+<a class="reference internal" href="Examples/Proteins/construction.py.html"><em>construction.py</em></a>
+shows some more complex examples of protein construction from PDB files.</li>
+<li>The program
+<a class="reference internal" href="Examples/Proteins/analysis.py.html"><em>analysis.py</em></a>
+demonstrates a few analysis techniques for comparing protein
+conformations.</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-dna">
+<li>DNA examples<ul>
+<li>The program
+<a class="reference internal" href="Examples/DNA/construction.py.html"><em>construction.py</em></a>
+contains the construction of a DNA strand with a ligand.</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-forcefield">
+<li>Forcefield examples<ul>
+<li>Electric field term<ul>
+<li>A pure Python implementation (rather slow in general, but
+tolerable for a simple term like this one) is given in
+<a class="reference internal" href="Examples/Forcefield/ElectricField/Python/ElectricField.py.html"><em>Python/ElectricField.py</em></a>.</li>
+<li>A more efficient implementation has the evaluation code written
+in Cython (<a class="reference internal" href="Examples/Forcefield/ElectricField/Cython/MMTK_electric_field.pyx.html"><em>Cython/MMTK_electric_field.pyx</em></a>)
+while the bookkeeping part remains in Python (<a class="reference internal" href="Examples/Forcefield/ElectricField/Cython/ElectricField.py.html"><em>Cython/ElectricField.py</em></a>).</li>
+</ul>
+</li>
+<li>Harmonic oscillator term<ul>
+<li>A pure Python implementation (rather slow in general, but
+tolerable for a simple term like this one) is given in
+<a class="reference internal" href="Examples/Forcefield/HarmonicOscillator/Python/HarmonicOscillatorFF.py.html"><em>Python/HarmonicOscillatorFF.py</em></a>.</li>
+<li>A more efficient implementation has the evaluation code written
+in Cython (<a class="reference internal" href="Examples/Forcefield/HarmonicOscillator/Cython/MMTK_harmonic_oscillator.pyx.html"><em>Cython/MMTK_harmonic_oscillator.pyx</em></a>)
+while the bookkeeping part remains in Python (<a class="reference internal" href="Examples/Forcefield/HarmonicOscillator/Cython/HarmonicOscillatorFF.py.html"><em>Cython/HarmonicOscillatorFF.py</em></a>).</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-mpi">
+<li>MPI examples (parallelization)<ul>
+<li>The program <a class="reference internal" href="Examples/MPI/md.py.html"><em>md.py</em></a>
+contains a parallelized version of <a class="reference internal" href="Examples/MolecularDynamics/solvation.py.html"><em>solvation.py</em></a>.</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-mdintegrator">
+<li>Molecular Dynamics integrators<ul>
+<li>The program <a class="reference internal" href="Examples/MDIntegrator/VelocityVerlet.pyx.html"><em>md.py</em></a>
+illustrates how Molecular Dynamics integrators can be implemented
+in Cython.</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-langevindynamics">
+<li>Langevin dynamics integrator<ul>
+<li>The programs
+<a class="reference internal" href="Examples/LangevinDynamics/LangevinDynamics.py.html"><em>LangevinDynamics.py</em></a>
+and <a class="reference internal" href="Examples/LangevinDynamics/MMTK_langevin.c.html"><em>MMTK_langevinmodule.c</em></a>
+implement a simple integrator for Langevin dynamics. It is meant as an
+example of how to write integrators etc. in C,
+but of course it can also be used directly.</li>
+</ul>
+</li>
+</ul>
+<ul class="simple" id="example-visualization">
+<li>Visualization examples</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>The program
+<a class="reference internal" href="Examples/Visualization/additional_objects.py.html"><em>additional_objects.py</em></a>
+describes the addition of custom graphics objects to the representation
+of a molecular system.</li>
+<li>The program
+<a class="reference internal" href="Examples/Visualization/vector_field_chimera.py.html"><em>vector_field_chimera.py</em></a>
+shows how to create a vector-field visualization of a normal mode using
+the graphics program Chimera for visualization. The program
+<a class="reference internal" href="Examples/Visualization/vector_field_vmd.py.html"><em>vector_field_vmd.py</em></a>
+does the same but uses the graphics program VMD.</li>
+<li>The program
+<a class="reference internal" href="Examples/Visualization/graphics_data.py.html"><em>graphics_data.py</em></a>
+shows how to use a fake graphics module to extract numerical values
+from a vector field object.</li>
+</ul>
+</div></blockquote>
+<ul class="simple" id="example-miscellaneous">
+<li>Micellaneous examples<ul>
+<li>The example
+<a class="reference internal" href="Examples/Miscellaneous/charge_fit.py.html"><em>charge_fit.py</em></a>
+demonstrates fitting point charges to an electrostatic potential
+energy surface.</li>
+<li>The program
+<a class="reference internal" href="Examples/Miscellaneous/construct_from_pdb.py.html"><em>construct_from_pdb.py</em></a>
+shows how a universe can be built from a PDB file in such a way that
+the internal atom ordering is compatible. This is important for exchanging
+data with other programs.</li>
+<li>The program
+<a class="reference internal" href="Examples/Miscellaneous/lattice.py.html"><em>lattice.py</em></a>
+constructs molecules placed on a lattice.</li>
+<li>The program
+<a class="reference internal" href="Examples/Miscellaneous/vector_field.py.html"><em>vector_field.py</em></a>
+shows how vector fields can be used in the analysis and visualization
+of collective motions.</li>
+</ul>
+</li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="glossary.html"
+                        title="previous chapter">Glossary</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="modules.html"
+                        title="next chapter">Module Reference</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/examples.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="modules.html" title="Module Reference"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="glossary.html" title="Glossary"
+             >previous</a> |</li>
+        <li><a href="index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

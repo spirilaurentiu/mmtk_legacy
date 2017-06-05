@@ -1,0 +1,375 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.ChargeFit &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.ChargeFit</h1><div class="highlight"><pre>
+<span class="c"># This module contains code for charge fitting.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Fit of point chages to an electrostatic potential surface</span>
+
+<span class="sd">This module implements a numerically stable method (based on</span>
+<span class="sd">Singular Value Decomposition) to fit point charges to values of an</span>
+<span class="sd">electrostatic potential surface. Two types of constraints are</span>
+<span class="sd">avaiable: a constraint on the total charge of the system or a subset</span>
+<span class="sd">of the system, and constraints that force the charges of several atoms</span>
+<span class="sd">to be equal. There is also a utility function that selects suitable</span>
+<span class="sd">evaluation points for the electrostatic potential surface. For the</span>
+<span class="sd">potential evaluation itself, some quantum chemistry program is needed.</span>
+
+<span class="sd">The charge fitting method is described in:</span>
+
+<span class="sd">  | K. Hinsen and B. Roux,</span>
+<span class="sd">  | An accurate potential for simulating proton transfer in acetylacetone,</span>
+<span class="sd">  | J. Comp. Chem. 18, 1997: 368</span>
+
+<span class="sd">See also Examples/Miscellaneous/charge_fit.py.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Random</span><span class="p">,</span> <span class="n">Units</span><span class="p">,</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">LA</span>
+
+
+<div class="viewcode-block" id="ChargeFit"><a class="viewcode-back" href="../../modules.html#MMTK.ChargeFit.ChargeFit">[docs]</a><span class="k">class</span> <span class="nc">ChargeFit</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fit of point charges to an electrostatic potential surface</span>
+
+<span class="sd">    A ChargeFit object acts like a dictionary that stores the fitted charge</span>
+<span class="sd">    value for each atom in the system.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">constraints</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param system: any chemical object (usually a molecule)</span>
+<span class="sd">        :param points: a list of point/potential pairs (a vector for the</span>
+<span class="sd">                       evaluation point, a number for the potential),</span>
+<span class="sd">                       or a dictionary whose keys are Configuration objects</span>
+<span class="sd">                       and whose values are lists of point/potential pairs.</span>
+<span class="sd">                       The latter case permits combined fits for several</span>
+<span class="sd">                       conformations of the system.</span>
+<span class="sd">        :param constraints: an optional list of constraint objects</span>
+<span class="sd">                            (:class:`~MMTK.ChargeFit.TotalChargeConstraint`</span>
+<span class="sd">                            and/or</span>
+<span class="sd">                            :class:`~MMTK.ChargeFit.EqualityConstraint` objects). </span>
+<span class="sd">                            If the constraints are inconsistent, a warning is</span>
+<span class="sd">                            printed and the result will satisfy the</span>
+<span class="sd">                            constraints only in a least-squares sense.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">points</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">({}):</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="p">{</span><span class="bp">None</span><span class="p">:</span> <span class="n">points</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">constraints</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">constraints</span> <span class="o">=</span> <span class="n">ChargeConstraintSet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">,</span> <span class="n">constraints</span><span class="p">)</span>
+        <span class="n">npoints</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">points</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+        <span class="n">natoms</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">npoints</span> <span class="o">&lt;</span> <span class="n">natoms</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Not enough data points for fit&quot;</span><span class="p">)</span>
+
+        <span class="n">m</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">npoints</span><span class="p">,</span> <span class="n">natoms</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">npoints</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">conf</span><span class="p">,</span> <span class="n">pointlist</span> <span class="ow">in</span> <span class="n">points</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pointlist</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">natoms</span><span class="p">):</span>
+                    <span class="n">m</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">r</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">))</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+                <span class="n">phi</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">m</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">electrostatic_energy</span>
+
+        <span class="n">m_test</span> <span class="o">=</span> <span class="n">m</span>
+        <span class="n">phi_test</span> <span class="o">=</span> <span class="n">phi</span>
+
+        <span class="k">if</span> <span class="n">constraints</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">phi</span> <span class="o">-=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">constraints</span><span class="o">.</span><span class="n">bi_c</span><span class="p">)</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">constraints</span><span class="o">.</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">c_rank</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">rank</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">c_rank</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">vt</span> <span class="o">=</span> <span class="n">LA</span><span class="o">.</span><span class="n">singular_value_decomposition</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="n">s_test</span> <span class="o">=</span> <span class="n">s</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">-</span><span class="n">c_rank</span><span class="p">]</span>
+        <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.e-10</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">s_test</span><span class="p">)</span>
+        <span class="n">nonzero</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">s_test</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">not_equal</span><span class="p">(</span><span class="n">s_test</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonzero</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">condition</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">nonzero</span><span class="p">)</span> <span class="o">/</span> \
+                         <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">nonzero</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">effective_rank</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">greater</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">effective_rank</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">effective_condition</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">nonzero</span><span class="p">)</span> <span class="o">/</span> <span class="n">cutoff</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">effective_condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">effective_rank</span> <span class="o">&lt;</span> <span class="n">natoms</span><span class="o">-</span><span class="n">c_rank</span><span class="p">:</span>
+            <span class="n">Utility</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&#39;Not all charges are uniquely determined&#39;</span> <span class="o">+</span>
+                            <span class="s">&#39; by the available data&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">natoms</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">cutoff</span><span class="p">:</span>
+                <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">vt</span><span class="p">),</span>
+                  <span class="n">s</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">u</span><span class="p">)[:</span><span class="n">natoms</span><span class="p">,</span> <span class="p">:],</span> <span class="n">phi</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">constraints</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">bi_c</span> <span class="o">+</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">constraints</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">q</span><span class="p">)</span>
+
+        <span class="n">deviation</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">m_test</span><span class="p">,</span> <span class="n">q</span><span class="p">)</span><span class="o">-</span><span class="n">phi_test</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rms_error</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">deviation</span><span class="p">,</span> <span class="n">deviation</span><span class="p">))</span>
+        <span class="n">deviation</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">deviation</span><span class="o">/</span><span class="n">phi_test</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">relative_rms_error</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">deviation</span><span class="p">,</span> <span class="n">deviation</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">charges</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">natoms</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">charges</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">charges</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="TotalChargeConstraint"><a class="viewcode-back" href="../../modules.html#MMTK.ChargeFit.TotalChargeConstraint">[docs]</a><span class="k">class</span> <span class="nc">TotalChargeConstraint</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Constraint on the total system charge</span>
+
+<span class="sd">    To be used with :class:`~MMTK.ChargeFit.ChargeFit`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">charge</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param system: any chamical object whose total charge</span>
+<span class="sd">                       is to be constrained</span>
+<span class="sd">        :param charge: the total charge value</span>
+<span class="sd">        :type charge: number</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">charge</span> <span class="o">=</span> <span class="n">charge</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">setCoefficients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">:</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="n">atoms</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+            <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span>
+        <span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">charge</span>
+
+</div>
+<div class="viewcode-block" id="EqualityConstraint"><a class="viewcode-back" href="../../modules.html#MMTK.ChargeFit.EqualityConstraint">[docs]</a><span class="k">class</span> <span class="nc">EqualityConstraint</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Constraint forcing two charges to be equal</span>
+
+<span class="sd">    To be used with :class:`~MMTK.ChargeFit.ChargeFit`</span>
+
+<span class="sd">    Any atom may occur in more than one EqualityConstraint object,</span>
+<span class="sd">    in order to keep the charges of more than two atoms equal.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param atom1: the first atom in the equality relation</span>
+<span class="sd">        :type atom1: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom2: the second atom in the equality relation</span>
+<span class="sd">        :type atom2: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">=</span> <span class="n">atom1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="n">atom2</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">setCoefficients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">atoms</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">1.</span>
+        <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">atoms</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+        <span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+
+</div>
+<span class="k">class</span> <span class="nc">ChargeConstraintSet</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">constraints</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span> <span class="o">=</span> <span class="n">atoms</span>
+        <span class="n">natoms</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">)</span>
+        <span class="n">nconst</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">constraints</span><span class="p">])</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nconst</span><span class="p">,</span> <span class="n">natoms</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nconst</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">cons</span> <span class="ow">in</span> <span class="n">constraints</span><span class="p">:</span>
+            <span class="n">cons</span><span class="o">.</span><span class="n">setCoefficients</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">cons</span><span class="p">)</span>
+        <span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">vt</span> <span class="o">=</span> <span class="n">LA</span><span class="o">.</span><span class="n">singular_value_decomposition</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">natoms</span><span class="p">,</span> <span class="n">nconst</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">b</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bi</span> <span class="o">=</span> <span class="n">LA</span><span class="o">.</span><span class="n">generalized_inverse</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">natoms</span><span class="p">)</span><span class="o">-</span><span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bi</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">c</span> <span class="o">=</span> <span class="n">c</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bi_c</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bi</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+        <span class="n">c_test</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bi_c</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">((</span><span class="n">c_test</span><span class="o">-</span><span class="n">c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">nconst</span> <span class="o">&gt;</span> <span class="mf">1.e-12</span><span class="p">:</span>
+            <span class="n">Utility</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;The charge constraints are inconsistent.&quot;</span>
+                            <span class="s">&quot; They will be applied as a least-squares&quot;</span>
+                            <span class="s">&quot; condition.&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="evaluationPoints"><a class="viewcode-back" href="../../modules.html#MMTK.ChargeFit.evaluationPoints">[docs]</a><span class="k">def</span> <span class="nf">evaluationPoints</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">smallest</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">largest</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate points in space around a molecule that are suitable</span>
+<span class="sd">    for potential evaluation in view of a subsequent charge fit.</span>
+<span class="sd">    The points are chosen at random and uniformly in a shell around the system.</span>
+
+<span class="sd">    :param system: the chemical object for which the charges</span>
+<span class="sd">                   will be fitted</span>
+<span class="sd">    :param n: the number of evaluation points to be generated</span>
+<span class="sd">    :param smallest: the smallest allowed distance of any evaluation</span>
+<span class="sd">                     point from any non-hydrogen atom</span>
+<span class="sd">    :param largest: the largest allowed value for the distance</span>
+<span class="sd">                    from an evaluation point to the nearest atom</span>
+<span class="sd">    :returns: a list of evaluation points</span>
+<span class="sd">    :rtype: list of Scientific.Geometry.Vector</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">atoms</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+    <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">boundingBox</span><span class="p">()</span>
+    <span class="n">margin</span> <span class="o">=</span> <span class="n">Vector</span><span class="p">(</span><span class="n">largest</span><span class="p">,</span> <span class="n">largest</span><span class="p">,</span> <span class="n">largest</span><span class="p">)</span>
+    <span class="n">p1</span> <span class="o">-=</span> <span class="n">margin</span>
+    <span class="n">p2</span> <span class="o">+=</span> <span class="n">margin</span>
+    <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p2</span><span class="o">-</span><span class="n">p1</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">p1</span> <span class="o">+</span> <span class="n">Random</span><span class="o">.</span><span class="n">randomPointInBox</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">+</span> <span class="n">offset</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">largest</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="o">-</span><span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">())</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;</span> <span class="n">smallest</span> <span class="ow">and</span> <span class="n">atom</span><span class="o">.</span><span class="n">symbol</span> <span class="o">!=</span> <span class="s">&#39;H&#39;</span><span class="p">:</span>
+                <span class="n">ok</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span> <span class="k">break</span>
+        <span class="k">if</span> <span class="n">ok</span> <span class="ow">and</span> <span class="n">m</span> <span class="o">&lt;=</span> <span class="n">largest</span><span class="p">:</span>
+            <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">points</span>
+
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+
+    <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="o">*</span>
+
+    <span class="n">a1</span> <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="n">Vector</span><span class="p">(</span><span class="o">-</span><span class="mf">0.05</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">))</span>
+    <span class="n">a2</span> <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="n">Vector</span><span class="p">(</span> <span class="mf">0.05</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">))</span>
+    <span class="n">system</span> <span class="o">=</span> <span class="n">Collection</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">)</span>
+
+    <span class="n">a1</span><span class="o">.</span><span class="n">charge</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.75</span>
+    <span class="n">a2</span><span class="o">.</span><span class="n">charge</span> <span class="o">=</span> <span class="mf">0.15</span>
+
+    <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">evaluationPoints</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="mi">50</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">system</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">p</span> <span class="o">+</span> <span class="n">atom</span><span class="o">.</span><span class="n">charge</span><span class="o">/</span><span class="p">(</span><span class="n">r</span><span class="o">-</span><span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">())</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">r</span><span class="p">,</span> <span class="n">p</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">electrostatic_energy</span><span class="p">))</span>
+
+    <span class="n">constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">TotalChargeConstraint</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)]</span>
+    <span class="n">constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">EqualityConstraint</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">)]</span>
+    <span class="n">constraints</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="n">ChargeFit</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">constraints</span><span class="p">)</span>
+    <span class="k">print</span> <span class="n">f</span><span class="p">[</span><span class="n">a1</span><span class="p">],</span> <span class="n">a1</span><span class="o">.</span><span class="n">charge</span>
+    <span class="k">print</span> <span class="n">f</span><span class="p">[</span><span class="n">a2</span><span class="p">],</span> <span class="n">a2</span><span class="o">.</span><span class="n">charge</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

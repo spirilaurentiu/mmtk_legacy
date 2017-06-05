@@ -1,0 +1,251 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.FourierBasis &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.FourierBasis</h1><div class="highlight"><pre>
+<span class="c"># Fourier basis for low-frequency normal mode calculations.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Fourier basis for low-frequency normal mode calculations</span>
+
+<span class="sd">This module provides a basis that is suitable for the</span>
+<span class="sd">calculation of low-frequency normal modes. The basis is</span>
+<span class="sd">derived from vector fields whose components are stationary</span>
+<span class="sd">waves in a box surrounding the system. For a description,</span>
+<span class="sd">see</span>
+
+<span class="sd">  | K. Hinsen</span>
+<span class="sd">  | Analysis of domain motions by approximate normal mode calculations</span>
+<span class="sd">  | Proteins 33 (1998): 417-429</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">ParticleProperties</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+<div class="viewcode-block" id="FourierBasis"><a class="viewcode-back" href="../../modules.html#MMTK.FourierBasis.FourierBasis">[docs]</a><span class="k">class</span> <span class="nc">FourierBasis</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collective-motion basis for low-frequency normal mode calculations</span>
+
+<span class="sd">    A FourierBasis behaves like a sequence of</span>
+<span class="sd">    :class:`~MMTK.ParticleProperties.ParticleVector` objects. The vectors are</span>
+<span class="sd">    B{not} orthonormal, because orthonormalization is handled</span>
+<span class="sd">    automatically by the normal mode class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the basis will be used</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param cutoff: the wavelength cutoff. A smaller value yields</span>
+<span class="sd">                       a larger basis.</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">boundingBox</span><span class="p">()</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="n">p2</span> <span class="o">+</span> <span class="n">Vector</span><span class="p">(</span><span class="n">cutoff</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">)</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="p">(</span><span class="n">p2</span><span class="o">-</span><span class="n">p1</span><span class="p">)</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">n_max</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="n">l</span><span class="o">/</span><span class="n">cutoff</span><span class="o">+</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">)</span>
+
+        <span class="n">wave_numbers</span> <span class="o">=</span> <span class="p">[(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nz</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">nx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n_max</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">n_max</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">ny</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n_max</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">n_max</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">nz</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n_max</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">n_max</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="p">(</span><span class="n">nx</span><span class="o">/</span><span class="n">l</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">ny</span><span class="o">/</span><span class="n">l</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">nz</span><span class="o">/</span><span class="n">l</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> \
+                                    <span class="o">&lt;</span> <span class="mf">0.25</span><span class="o">/</span><span class="n">cutoff</span><span class="o">**</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">atoms</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="n">natoms</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="p">)</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">wave_numbers</span><span class="p">)</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span> <span class="n">natoms</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="n">cm</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">centerOfMass</span><span class="p">()</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">rotation</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">)]:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">basis</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+                <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="n">rotation</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">-</span><span class="n">cm</span><span class="p">)</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="n">i</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="o">-</span><span class="n">p1</span><span class="o">.</span><span class="n">array</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">wave_numbers</span><span class="p">:</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">/</span><span class="n">l</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_w</span><span class="p">(</span><span class="n">conf</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_w</span><span class="p">(</span><span class="n">conf</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">_w</span><span class="p">(</span><span class="n">conf</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">k</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">basis</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">w</span>
+            <span class="n">basis</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">w</span>
+            <span class="n">basis</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">w</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">3</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">basis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">=</span> <span class="n">universe</span>
+
+    <span class="n">__safe_for_unpickling__</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">__had_initargs__</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">_w</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="o">-</span><span class="n">k</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">k</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                                                 <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">item</span><span class="p">])</span>
+
+
+<span class="c"># Estimate number of basis vectors for a given cutoff</span>
+</div>
+<div class="viewcode-block" id="countBasisVectors"><a class="viewcode-back" href="../../modules.html#MMTK.FourierBasis.countBasisVectors">[docs]</a><span class="k">def</span> <span class="nf">countBasisVectors</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate the number of basis vectors for a given universe and cutoff</span>
+
+<span class="sd">    :param universe: the universe</span>
+<span class="sd">    :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">    :param cutoff: the wavelength cutoff. A smaller value yields a larger basis.</span>
+<span class="sd">    :type cutoff: float</span>
+<span class="sd">    :returns: the number of basis vectors in a FourierBasis</span>
+<span class="sd">    :rtype: int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">boundingBox</span><span class="p">()</span>
+    <span class="n">p2</span> <span class="o">=</span> <span class="n">p2</span> <span class="o">+</span> <span class="n">Vector</span><span class="p">(</span><span class="n">cutoff</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">)</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="p">(</span><span class="n">p2</span><span class="o">-</span><span class="n">p1</span><span class="p">)</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">n_max</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="n">l</span><span class="o">/</span><span class="n">cutoff</span><span class="o">+</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">)</span>
+    <span class="n">n_wave_numbers</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">nx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n_max</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">n_max</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">ny</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n_max</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">n_max</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">nz</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n_max</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">n_max</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">nx</span><span class="o">/</span><span class="n">l</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">ny</span><span class="o">/</span><span class="n">l</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">nz</span><span class="o">/</span><span class="n">l</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">&lt;</span> <span class="mf">0.25</span><span class="o">/</span><span class="n">cutoff</span><span class="o">**</span><span class="mi">2</span><span class="p">:</span>
+                    <span class="n">n_wave_numbers</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="mi">3</span><span class="o">*</span><span class="n">n_wave_numbers</span><span class="o">+</span><span class="mi">3</span>
+
+
+<span class="c"># Estimate cutoff for a given number of basis vectors</span>
+</div>
+<div class="viewcode-block" id="estimateCutoff"><a class="viewcode-back" href="../../modules.html#MMTK.FourierBasis.estimateCutoff">[docs]</a><span class="k">def</span> <span class="nf">estimateCutoff</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">nmodes</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate the cutoff that yields a given number of basis vectors</span>
+<span class="sd">    for a given universe.</span>
+
+<span class="sd">    :param universe: the universe</span>
+<span class="sd">    :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">    :param nmodes: the number of basis vectors in a FourierBasis</span>
+<span class="sd">    :type nmodes: int</span>
+<span class="sd">    :returns: the wavelength cutoff and the precise number of basis vectors</span>
+<span class="sd">    :rtype: tuple (float, int)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">natoms</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">numberOfCartesianCoordinates</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">nmodes</span> <span class="o">&gt;</span> <span class="n">natoms</span><span class="p">:</span>
+        <span class="n">nmodes</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span>
+        <span class="n">cutoff</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">boundingBox</span><span class="p">()</span>
+        <span class="n">cutoff_max</span> <span class="o">=</span> <span class="p">(</span><span class="n">p2</span><span class="o">-</span><span class="n">p1</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">cutoff_max</span>
+        <span class="n">nmodes_opt</span> <span class="o">=</span> <span class="n">nmodes</span>
+        <span class="n">nmodes</span> <span class="o">=</span> <span class="n">countBasisVectors</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">nmodes</span> <span class="o">&gt;</span> <span class="n">nmodes_opt</span><span class="p">:</span>
+            <span class="n">cutoff</span> <span class="o">+=</span> <span class="mf">0.1</span>
+            <span class="k">if</span> <span class="n">cutoff</span> <span class="o">&gt;</span> <span class="n">cutoff_max</span><span class="p">:</span>
+                <span class="n">cutoff</span> <span class="o">=</span> <span class="n">cutoff_max</span>
+                <span class="k">break</span>
+            <span class="n">nmodes</span> <span class="o">=</span> <span class="n">countBasisVectors</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">nmodes</span> <span class="o">&lt;</span> <span class="n">nmodes_opt</span><span class="p">:</span>
+            <span class="n">cutoff</span> <span class="o">-=</span> <span class="mf">0.1</span>
+            <span class="k">if</span> <span class="n">cutoff</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span>
+                <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">0.1</span>
+                <span class="k">break</span>
+            <span class="n">nmodes</span> <span class="o">=</span> <span class="n">countBasisVectors</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cutoff</span><span class="p">,</span> <span class="n">nmodes</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

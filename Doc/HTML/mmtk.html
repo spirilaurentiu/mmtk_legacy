@@ -1,0 +1,1924 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK User’s Guide &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="index.html" />
+    <link rel="next" title="Glossary" href="glossary.html" />
+    <link rel="prev" title="MMTK User Guide" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="glossary.html" title="Glossary"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="MMTK User Guide"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="mmtk-user-s-guide">
+<h1>MMTK User&#8217;s Guide<a class="headerlink" href="#mmtk-user-s-guide" title="Permalink to this headline">¶</a></h1>
+<p>for MMTK 2.7.7</p>
+<p>by Konrad Hinsen</p>
+</div>
+<div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>The Molecular Modelling Toolkit (MMTK)
+presents a new approach to molecular simulations. It is not a
+&#8220;simulation program&#8221; with a certain set of functions that can be used
+by writing more or less flexible &#8220;input files&#8221;, but a collection of
+library modules written in an easy-to-learn high-level programming
+language, <a class="reference external" href="http://www.python.org">Python</a>. This approach
+offers three important advantages:</p>
+<ul class="simple">
+<li>Application programs can use the full power of a general and well-designed
+programming language.</li>
+<li>Application programs can profit from the large set of other
+libraries that are available for Python. These may be scientific or
+non-scientific; for example, it is very easy to write simulation or
+analysis programs with graphical user interfaces (using the
+module Tkinter in the Python standard library), or couple scientific
+calculations with a Web server.</li>
+<li>Any user can provide useful additions in separate modules, whereas adding
+features to a monolithic program requires at least the cooperation of
+the original author.</li>
+</ul>
+<p>To further encourage collaborative code development, MMTK uses a very
+unrestrictive licensing policy. MMTK is free software, just like
+Python. Although MMTK is copyrighted, anyone is allowed to use it for
+any purpose, including commercial ones, as well as to modify and
+redistribute it (a more precise description is given in the copyright
+statement that comes with the code).</p>
+<p>This manual describes version 2.7.7 of MMTK. The 2.x versions contain
+some incompatible changes with respect to earlier versions (1.x), most
+importantly a package structure that reduces the risk of name
+conflicts with other Python packages, and facilitates future
+enhancements. There are also many new features and improvements to
+existing functions.</p>
+<p>Using MMTK requires a basic knowledge of object-oriented programming
+and Python. Newcomers to this subject should have a look at the
+introductory section in this manual and at the <a class="reference external" href="http://www.python.org/doc/tut/tut.html">Python tutorial</a> (which also comes with the
+Python interpreter). There are also numerous <a class="reference external" href="http://www.python.org/doc/Books.html">books on Python</a> that are useful in getting
+started. Even without MMTK, Python is a very useful programming
+language for scientific use, allowing rapid development and testing
+and easy interfacing to code written in low-level languages such as
+Fortran or C.</p>
+<p>This manual consists of several introductory chapters and a
+<a class="reference internal" href="modules.html#reference"><em>module reference</em></a>. The introductory chapters explain
+how common tasks are handled with MMTK, but they do not describe all
+of its features, nor do they contain a full documentation of functions
+or classes. This information can be found in the
+<a class="reference internal" href="modules.html#reference"><em>module -reference</em></a>, which describes all classes and functions
+intended for end-user applications module by module, using
+documentation extracted directly from the source code.  References
+from the introductory sections to the module reference facilitate
+finding the relevant documentation.</p>
+</div>
+<div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<p>This chapter explains the basic structure of MMTK and its view of
+molecular systems. Every MMTK user should read it at least once.</p>
+<div class="section" id="using-mmtk">
+<h2>Using MMTK<a class="headerlink" href="#using-mmtk" title="Permalink to this headline">¶</a></h2>
+<p>MMTK applications are ordinary Python programs, and can be written
+using any standard text editor. For interactive use it is recommended
+to use one of the many tools available for interactive Python
+programming.</p>
+<p>MMTK tries to be as user-friendly as possible for interactive use. For
+example, lengthy calculations can usually be interrupted by typing
+Control-C. This will result in an error message (&#8220;Keyboard
+Interrupt&#8221;), but you can simply go on typing other commands.
+Interruption is particularly useful for energy minimization and
+molecular dynamics: you can interrupt the calculation at any time,
+look at the current state or do some analysis, and then continue.</p>
+</div>
+<div class="section" id="modules">
+<h2>Modules<a class="headerlink" href="#modules" title="Permalink to this headline">¶</a></h2>
+<p>MMTK is a package consisting of various modules, most of them written
+in Python, and some in C for efficiency. The individual modules are
+described in the <a class="reference internal" href="modules.html#reference"><em>module -reference</em></a>. The basic
+definitions that almost every application needs are collected in the
+top-level module, MMTK. The first line of most applications is
+therefore:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>The definitions that are specific to particular applications reside in
+submodules within the package MMTK. For example, force fields are
+defined in <tt class="xref py py-mod docutils literal"><span class="pre">MMTK.ForceFields</span></tt>, and peptide
+chain and protein objects are defined in <a class="reference internal" href="modules.html#module-MMTK.Proteins" title="MMTK.Proteins"><tt class="xref py py-mod docutils literal"><span class="pre">MMTK.Proteins</span></tt></a>.</p>
+<p>Python provides two ways to access objects in modules and submodules.
+The first one is importing a module and referring to objects in it,
+e.g.:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">MMTK</span>
+<span class="kn">import</span> <span class="nn">MMTK.ForceFields</span>
+<span class="n">universe</span> <span class="o">=</span> <span class="n">MMTK</span><span class="o">.</span><span class="n">InfiniteUniverse</span><span class="p">(</span><span class="n">MMTK</span><span class="o">.</span><span class="n">ForceFields</span><span class="o">.</span><span class="n">Amber99ForceField</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>The second method is importing all or some objects <em>from</em>
+a module:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">InfiniteUniverse</span>
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields</span> <span class="kn">import</span> <span class="n">Amber99ForceField</span>
+<span class="n">universe</span> <span class="o">=</span> <span class="n">InfiniteUniverse</span><span class="p">(</span><span class="n">Amber99ForceField</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>These two import styles can also be mixed according to convience.
+In order to prevent any confusion, all objects are referred to by
+their full names in this manual. The Amber force field object
+is thus called <tt class="xref py py-class docutils literal"><span class="pre">MMTK.ForceFields.Amber99ForceField</span></tt>.
+Of course the user is free to use selective imports in order to
+be able to use such objects with shorter names.</p>
+</div>
+<div class="section" id="objects">
+<h2>Objects<a class="headerlink" href="#objects" title="Permalink to this headline">¶</a></h2>
+<p>MMTK is an object-oriented system.  Since objects are everywhere and
+everything is an object, it is useful to know the most important
+object types and what can be done with them. All object types in MMTK
+have meaningful names, so it is easy to identify them in practice. The
+following overview contains only those objects that a user will see
+directly. There are many more object types used by MMTK internally,
+and also some less common user objects that are not mentioned here.</p>
+<div class="section" id="chemical-objects">
+<h3>Chemical objects<a class="headerlink" href="#chemical-objects" title="Permalink to this headline">¶</a></h3>
+<p>These are the objects that represent the parts of a molecular system:</p>
+<ul class="simple">
+<li>atoms</li>
+<li>groups</li>
+<li>molecules</li>
+<li>molecular complexes</li>
+</ul>
+<p>These objects form a simple hierarchy: complexes consist of
+molecules, molecules consist of groups and atoms, groups consist of
+smaller groups and atoms. All of these, except for groups,
+can be used directly to construct a molecular system. Groups can
+only be used in the definitions of other groups and molecules in the
+<a class="reference internal" href="#overview-database"><em>The chemical database</em></a>.</p>
+<p>A number of operations can be performed on chemical objects, which
+can roughly be classified into inquiry (constituent atoms, bonds, center
+of mass etc.) and modification (translate, rotate).</p>
+<p>There are also specialized versions of some of these objects. For example,
+MMTK defines proteins as special complexes, consisting of peptide
+chains, which are special molecules. They offer a range of special
+operations (such as selecting residues or constructing the positions of
+missing hydrogen atoms) that do not make sense for molecules in
+general.</p>
+</div>
+<div class="section" id="collections">
+<h3>Collections<a class="headerlink" href="#collections" title="Permalink to this headline">¶</a></h3>
+<p>Collection objects represent arbitrary collections of chemical
+objects.  They are used to be able to refer to collections as single
+entities. For example, you might want to call all water molecules
+collectively &#8220;solvent&#8221;. Most of the operations on chemical objects
+are also available for collections.</p>
+</div>
+<div class="section" id="force-fields">
+<h3>Force fields<a class="headerlink" href="#force-fields" title="Permalink to this headline">¶</a></h3>
+<p>Force field objects represent a precise description of force
+fields, i.e. a complete recipe for calculating the potential energy
+(and its derivatives) for a given molecular system. In other words,
+they specify not only the functional form of the various interactions,
+but also all parameters and the prescriptions for applying these
+parameters to an actual molecular system.</p>
+</div>
+<div class="section" id="universes">
+<h3>Universes<a class="headerlink" href="#universes" title="Permalink to this headline">¶</a></h3>
+<p>Universes define complete molecular systems, i.e. they contain
+chemical objects. In addition, they describe interactions within the
+system (by a force field), boundary conditions, external fields,
+etc. Many of the operations that can be used on chemical objects can
+also be applied to complete universes.</p>
+</div>
+<div class="section" id="minimizers-and-integrators">
+<h3>Minimizers and integrators<a class="headerlink" href="#minimizers-and-integrators" title="Permalink to this headline">¶</a></h3>
+<p>A minimizer object is a special &#8220;machine&#8221; that can find local minima
+in the potential energy surface of a universe. You may consider this a
+function, if you wish, but of course functions are just special
+objects. Similarly, an integrator is a special &#8220;machine&#8221; that can
+determine a dynamical trajectory for a system on a given potential
+energy surface.</p>
+</div>
+<div class="section" id="trajectories">
+<h3>Trajectories<a class="headerlink" href="#trajectories" title="Permalink to this headline">¶</a></h3>
+<p>Minimizers and integrators can produce trajectories, which are special
+files containing a sequence of configurations and/or other related
+information. Of course trajectory objects can also be read for
+analysis.</p>
+</div>
+<div class="section" id="variables">
+<h3>Variables<a class="headerlink" href="#variables" title="Permalink to this headline">¶</a></h3>
+<p>Variable objects (not to be confused with standard Python variables)
+describe quantities that have a value for each atom in a system, for
+example positions, masses, or energy gradients. Their most common use
+is for storing various configurations of a system.</p>
+</div>
+<div class="section" id="normal-modes">
+<h3>Normal modes<a class="headerlink" href="#normal-modes" title="Permalink to this headline">¶</a></h3>
+<p>Normal mode objects contain normal mode frequencies and atomic
+displacements for a given universe. MMTK provides three kinds of
+normal modes which correspond to three different physical situations:</p>
+<ul class="simple">
+<li>Energetic modes represent the principal axes of the potential
+energy surface. They each have a force constant that is smallest
+for the most collective motions and highest for the most localized
+motions. Energetic modes are appropriate for describing the
+potential energy surface without reference to any particular
+dynamics, e.g. in flexibility analysis or Monte-Carlo sampling.</li>
+<li>Vibrational modes represent the vibrational motions of a system
+that have well-defined frequencies. Their use implies that the
+system follows Newtonian dynamics or quantum dynamics. This is
+appropriate for small molecules, and for the most localized motions
+of macromolecules.</li>
+<li>Brownian modes represent diffusional motions of an overdamped
+system. They describe systems with Brownian dynamics and are
+appropriate for describing the slow motions of macromolecules.</li>
+</ul>
+</div>
+<div class="section" id="non-mmtk-objects">
+<h3>Non-MMTK objects<a class="headerlink" href="#non-mmtk-objects" title="Permalink to this headline">¶</a></h3>
+<p>An MMTK application program will typically also make use of objects
+provided by Python or Python library modules. A particularly useful
+library is the package Scientific, which
+is also used by MMTK itself. The most important objects are</p>
+<ul class="simple">
+<li>numbers (integers, real number, complex numbers), provided by Python</li>
+<li>vectors (in 3D coordinate space) provided by the module Scientific.Geometry.</li>
+<li>character strings, provided by Python</li>
+<li>files, provided by Python</li>
+</ul>
+<p>Of course MMTK applications can make use of the Python standard
+library or any other Python modules. For example, it is possible
+to write a simulation program that provides status reports via an
+integrated Web server, using the Python standard module SimpleHTTPServer.</p>
+</div>
+</div>
+<div class="section" id="the-chemical-database">
+<span id="overview-database"></span><h2>The chemical database<a class="headerlink" href="#the-chemical-database" title="Permalink to this headline">¶</a></h2>
+<p>For defining the chemical objects described above, MMTK uses a
+database of descriptions. There is a database for atoms, one for
+groups, etc. When you ask MMTK to make a specific chemical object, for
+example a water molecule, MMTK looks for the definition of water in
+the molecule database. A database entry contains everything there
+is to know about the object it defines: its constituents and their
+names, configurations, other names used e.g. for I/O, and all
+information force fields might need about the objects.</p>
+<p>MMTK comes with database entries for many common objects (water,
+amino acids, etc.). For other objects you will have to write the definitions
+yourself. as described in the section <a class="reference internal" href="#database"><em>Constructing the database</em></a>.</p>
+</div>
+<div class="section" id="id1">
+<h2>Force fields<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>MMTK contains everything necessary to use the
+<a class="reference external" href="http://ambermd.org/#ff">Amber 99 force field</a>
+on proteins, DNA, and
+water molecules. It uses the standard Amber parameter and modification
+file format. In addition to the Amber force field, there is a simple
+Lennard-Jones force field for noble gases, and a deformation force
+field for normal mode calculations on large proteins.</p>
+<p>MMTK was designed to make the addition of force field terms and the
+implementation of other force fields as easy as possible. Force field
+terms can be defined in Python (for ease of implementation) or in
+Cython, C, or Fortran (for efficiency). This is described in the
+developer&#8217;s guide.</p>
+</div>
+<div class="section" id="units">
+<h2>Units<a class="headerlink" href="#units" title="Permalink to this headline">¶</a></h2>
+<p>Since MMTK is not a black-box program, but a modular library,
+it is essential for it to use a consistent unit system in which, for
+example, the inverse of a frequency is a time, and the product of
+a mass and the square of a velocity is an energy, without additional
+conversion factors. Black-box programs can (and usually do) use
+a consistent unit system internally and convert to &#8220;conventional&#8221;
+units for input and output.</p>
+<p>The unit system of MMTK consists mostly of SI units of appropriate
+magnitude for molecular systems:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="58%" />
+<col width="42%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head"><strong>Measurement</strong></th>
+<th class="head"><strong>Units</strong></th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Length</td>
+<td>nm</td>
+</tr>
+<tr class="row-odd"><td>Time</td>
+<td>ps</td>
+</tr>
+<tr class="row-even"><td>Mass</td>
+<td>amu (g/mol)</td>
+</tr>
+<tr class="row-odd"><td>Energy</td>
+<td>kJ/mol</td>
+</tr>
+<tr class="row-even"><td>Frequency</td>
+<td>THz (1/ps)</td>
+</tr>
+<tr class="row-odd"><td>Temperature</td>
+<td>K</td>
+</tr>
+<tr class="row-even"><td>Charge</td>
+<td>e</td>
+</tr>
+</tbody>
+</table>
+<p>The module <a class="reference internal" href="modules.html#module-MMTK.Units" title="MMTK.Units"><tt class="xref py py-mod docutils literal"><span class="pre">MMTK.Units</span></tt></a> contains convenient
+conversion constants for the units commonly used in computational
+chemistry. For example, a length of 2 Ångström can be
+written as <tt class="docutils literal"><span class="pre">2*Units.Ang</span></tt>, and a frequency can be
+printed in wavenumbers with <tt class="docutils literal"><span class="pre">print</span> <span class="pre">frequency/Units.invcm</span></tt>.</p>
+</div>
+<div class="section" id="a-simple-example">
+<h2>A simple example<a class="headerlink" href="#a-simple-example" title="Permalink to this headline">¶</a></h2>
+<p>The following simple example shows how a typical MMTK application
+might look like. It constructs a system consisting of a single water
+molecule and runs a short molecular dynamics trajectory. There are
+many alternative ways to do this; this particular one was chosen
+because it makes each step explicit and clear. The individual steps
+are explained in the remaining chapters of the manual.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Import the necessary MMTK definitions.</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields</span> <span class="kn">import</span> <span class="n">Amber99ForceField</span>
+<span class="kn">from</span> <span class="nn">MMTK.Trajectory</span> <span class="kn">import</span> <span class="n">Trajectory</span><span class="p">,</span> <span class="n">TrajectoryOutput</span><span class="p">,</span> <span class="n">StandardLogOutput</span>
+<span class="kn">from</span> <span class="nn">MMTK.Dynamics</span> <span class="kn">import</span> <span class="n">VelocityVerletIntegrator</span>
+<span class="c"># Create an infinite universe (i.e. no boundaries, non-periodic).</span>
+<span class="n">universe</span> <span class="o">=</span> <span class="n">InfiniteUniverse</span><span class="p">(</span><span class="n">Amber99ForceField</span><span class="p">())</span>
+<span class="c"># Create a water molecule in the universe.</span>
+<span class="c"># Water is defined in the database.</span>
+<span class="n">universe</span><span class="o">.</span><span class="n">molecule</span> <span class="o">=</span> <span class="n">Molecule</span><span class="p">(</span><span class="s">&#39;water&#39;</span><span class="p">)</span>
+<span class="c"># Generate random velocities.</span>
+<span class="n">universe</span><span class="o">.</span><span class="n">initializeVelocitiesToTemperature</span><span class="p">(</span><span class="mi">300</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">K</span><span class="p">)</span>
+<span class="c"># Create an integrator.</span>
+<span class="n">integrator</span> <span class="o">=</span> <span class="n">VelocityVerletIntegrator</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+<span class="c"># Generate a trajectory</span>
+<span class="n">trajectory</span> <span class="o">=</span> <span class="n">Trajectory</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="s">&quot;water.nc&quot;</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span>
+<span class="c"># Run the integrator for 50 steps of 1 fs, printing time and energy</span>
+<span class="c"># every fifth step and writing time, energy, temperature, and the positions</span>
+<span class="c"># of all atoms to the trajectory at each step.</span>
+<span class="n">t_actions</span> <span class="o">=</span> <span class="p">[</span><span class="n">StandardLogOutput</span><span class="p">(</span><span class="mi">5</span><span class="p">),</span> \
+             <span class="n">TrajectoryOutput</span><span class="p">(</span><span class="s">&quot;time&quot;</span><span class="p">,</span> <span class="s">&quot;energy&quot;</span><span class="p">,</span> \
+             <span class="s">&quot;thermodynamic&quot;</span><span class="p">,</span> <span class="s">&quot;configuration&quot;</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">integrator</span><span class="p">(</span><span class="n">delta_t</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">fs</span><span class="p">,</span> <span class="n">steps</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">actions</span> <span class="o">=</span> <span class="n">t_actions</span><span class="p">)</span>
+<span class="c"># Close the trajectory</span>
+<span class="n">trajectory</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="constructing-a-molecular-system">
+<h1>Constructing a molecular system<a class="headerlink" href="#constructing-a-molecular-system" title="Permalink to this headline">¶</a></h1>
+<p>The construction of a complete system for simulation or analysis
+involves some or all of the following operations:</p>
+<ul class="simple">
+<li>Creating molecules and other chemical objects.</li>
+<li>Defining the configuration of all objects.</li>
+<li>Defining the &#8220;surroundings&#8221; (e.g. boundary conditions).</li>
+<li>Choosing a force field.</li>
+</ul>
+<p>MMTK offers a large range of functions to deal with these tasks.</p>
+<div class="section" id="creating-chemical-objects">
+<h2>Creating chemical objects<a class="headerlink" href="#creating-chemical-objects" title="Permalink to this headline">¶</a></h2>
+<p>Chemical objects (atoms, molecules, complexes) are created from
+definitions in the <a class="reference internal" href="#database"><em>Constructing the database</em></a>. Since
+these definitions contain most of the necessary information, the
+subsequent creation of the objects is a simple procedure.</p>
+<p>All objects are created by their class name
+(<a class="reference internal" href="modules.html#MMTK.ChemicalObjects.Atom" title="MMTK.ChemicalObjects.Atom"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.Atom</span></tt></a>, <a class="reference internal" href="modules.html#MMTK.ChemicalObjects.Molecule" title="MMTK.ChemicalObjects.Molecule"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.Molecule</span></tt></a>,
+and <a class="reference internal" href="modules.html#MMTK.ChemicalObjects.Complex" title="MMTK.ChemicalObjects.Complex"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.Complex</span></tt></a>) with the name
+of the definition file as first parameter. Additional optional parameters
+can be specified to modify the object being created. The following optional
+parameters can be used for all object types:</p>
+<ul class="simple">
+<li>name=string
+Specifies a name for the object. The default name is the one given in
+the definition file.</li>
+<li>position=vector
+Specifies the position of the center of mass. The default is the origin.</li>
+<li>configuration=string
+Indicates a configuration from the configuration dictionary in the
+definition file. The default is &#8216;default&#8217; if such an entry exists in the
+configuration dictionary. Otherwise the object is created without atomic
+positions.</li>
+</ul>
+<p>Some examples with additional explanations for specific types:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">Atom('C')</span></tt> creates a carbon atom.</li>
+<li><tt class="docutils literal"><span class="pre">Molecule('water',</span> <span class="pre">position=Vector(0.,0.,1.))</span></tt>
+creates a water molecule using configuration &#8216;default&#8217; and moves the
+center of mass to the indicated position.</li>
+</ul>
+<div class="section" id="proteins-peptide-chains-and-nucleotide-chains">
+<h3>Proteins, peptide chains, and nucleotide chains<a class="headerlink" href="#proteins-peptide-chains-and-nucleotide-chains" title="Permalink to this headline">¶</a></h3>
+<p>MMTK contains special support for working with proteins, peptide
+chains, and nucleotide chains. As described in the chapter
+<a class="reference internal" href="#database"><em>Constructing the database</em></a>, proteins can be described by a special database
+definition file. However, it is often simpler to create macromolecular
+objects directly in an application program. The classes are
+<a class="reference internal" href="modules.html#MMTK.Proteins.PeptideChain" title="MMTK.Proteins.PeptideChain"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Proteins.PeptideChain</span></tt></a>, <a class="reference internal" href="modules.html#MMTK.Proteins.Protein" title="MMTK.Proteins.Protein"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Proteins.Protein</span></tt></a>,
+and <a class="reference internal" href="modules.html#MMTK.NucleicAcids.NucleotideChain" title="MMTK.NucleicAcids.NucleotideChain"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.NucleicAcids.NucleotideChain</span></tt></a>.</p>
+<p>Proteins can be created from definition files in the database,
+from previously constructed peptide chain objects, or directly
+from PDB files if no special manipulations are necessary.</p>
+<p>Examples:</p>
+<ul class="simple">
+<li>Protein(&#8216;insulin&#8217;) creates a protein object for
+insulin from a database file.</li>
+<li>Protein(&#8216;1mbd.pdb&#8217;) creates a protein object for myoglobin
+directly from a PDB file, but leaving out the
+heme group, which is not a peptide chain.</li>
+</ul>
+<p>Peptide chains are created from a sequence of residues, which can be
+a <a class="reference internal" href="modules.html#MMTK.PDB.PDBPeptideChain" title="MMTK.PDB.PDBPeptideChain"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.PDB.PDBPeptideChain</span></tt></a> object, a list of three-letter
+residue codes, or a string containing one-letter residue codes. In the
+last two cases the atomic positions are not defined. MMTK provides
+several models for the residues which provide different levels of
+detail: an all-atom model, a model without hydrogen atoms, two models
+containing only polar hydrogens (using different definitions of polar
+hydrogens), and a model containing only the C<sub>α</sub> atoms, with each
+C<sub>α</sub> atom having the mass of the entire residue. The last model
+is useful for conformational analyses in which only the backbone
+conformations are important.</p>
+<p>The construction of nucleotide chains is very similar. The residue
+list can be either a <a class="reference internal" href="modules.html#MMTK.PDB.PDBNucleotideChain" title="MMTK.PDB.PDBNucleotideChain"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.PDB.PDBNucleotideChain</span></tt></a> object or a
+list of two-letter residue names. The first letter of a residue name
+indicates the sugar type (&#8216;R&#8217; for ribose and&#8217;D&#8217; for desoxyribose), and
+the second letter defines the base (&#8216;A&#8217;, &#8216;C&#8217;, and&#8217;G&#8217;, plus &#8216;T&#8217; for DNA
+and&#8217;U&#8217; for RNA). The models are the same as for peptide chains, except
+that the C<sub>α</sub> model does not exist.</p>
+<p>Most frequently proteins and nucleotide chains are created from a PDB
+file. The PDB files often contain solvent (water) as well, and perhaps
+some other molecules. MMTK provides convenient functions for extracting
+information from PDB files and for building molecules from them in the
+module <a class="reference internal" href="modules.html#module-MMTK.PDB" title="MMTK.PDB"><tt class="xref py py-mod docutils literal"><span class="pre">MMTK.PDB</span></tt></a>. The first step is the creation of a
+<a class="reference internal" href="modules.html#MMTK.PDB.PDBConfiguration" title="MMTK.PDB.PDBConfiguration"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.PDB.PDBConfiguration</span></tt></a> object from the PDB file:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">MMTK.PDB</span> <span class="kn">import</span> <span class="n">PDBConfiguration</span>
+<span class="n">configuration</span> <span class="o">=</span> <span class="n">PDBConfiguration</span><span class="p">(</span><span class="s">&#39;some_file.pdb&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The easiest way to generate MMTK objects for all molecules in the
+PDB file is then</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">molecules</span> <span class="o">=</span> <span class="n">configuration</span><span class="o">.</span><span class="n">createAll</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The result is a collection of molecules, peptide chains, and
+nucleotide chains, depending on the contents of the PDB files.
+There are also methods for modifying the PDBConfiguration before
+creating MMTK objects from it, and for creating objects
+selectively. See the documentation for the modules <a class="reference internal" href="modules.html#module-MMTK.PDB" title="MMTK.PDB"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.PDB</span></tt></a> and Scientific.IO.PDB for details,
+as well as the <a class="reference internal" href="examples.html#example-proteins"><em>Proteins</em></a> and <a class="reference internal" href="examples.html#example-dna"><em>DNA</em></a> examples.</p>
+</div>
+<div class="section" id="lattices">
+<h3>Lattices<a class="headerlink" href="#lattices" title="Permalink to this headline">¶</a></h3>
+<p>Sometimes it is necessary to generate objects (atoms or molecules)
+positioned on a lattice. To facilitate this task, MMTK defines lattice
+objects which are essentially sequence objects containing points or
+objects at points. Lattices can therefore be used like lists with
+indexing and for-loops. The lattice classes
+are <a class="reference internal" href="modules.html#MMTK.Geometry.RhombicLattice" title="MMTK.Geometry.RhombicLattice"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Geometry.RhombicLattice</span></tt></a>,
+<a class="reference internal" href="modules.html#MMTK.Geometry.BravaisLattice" title="MMTK.Geometry.BravaisLattice"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Geometry.BravaisLattice</span></tt></a>, and
+<a class="reference internal" href="modules.html#MMTK.Geometry.SCLattice" title="MMTK.Geometry.SCLattice"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Geometry.SCLattice</span></tt></a>.</p>
+</div>
+<div class="section" id="random-numbers">
+<h3>Random numbers<a class="headerlink" href="#random-numbers" title="Permalink to this headline">¶</a></h3>
+<p>The Python standard library and the Numerical Python package provide
+random number generators, and more are available in seperate packages.
+MMTK provides some convenience functions that return more specialized
+random quantities: random points in a universe, random velocities,
+random particle displacement vectors, random orientations. These
+functions are defined in module <a class="reference internal" href="modules.html#module-MMTK.Random" title="MMTK.Random"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Random</span></tt></a>.</p>
+</div>
+<div class="section" id="id2">
+<h3>Collections<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Often it is useful to treat a collection of several objects as a
+single entity.  Examples are a large number of solvent molecules
+surrounding a solute, or all sidechains of a protein. MMTK has special
+collection objects for this purpose, defined as
+<a class="reference internal" href="modules.html#MMTK.Collections.Collection" title="MMTK.Collections.Collection"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Collections.Collection</span></tt></a>. Most of the methods
+available for molecules can also be used on collections.</p>
+<p>A variant of a collection is the partitioned collection, implemented in
+class <a class="reference internal" href="modules.html#MMTK.Collections.PartitionedCollection" title="MMTK.Collections.PartitionedCollection"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Collections.PartitionedCollection</span></tt></a>. This class
+acts much like a standard collection, but groups its elements by
+geometrical position in small sub-boxes. As a consequence, some geometrical
+algorithms (e.g. pair search within a cutoff) are much faster, but
+other operations become somewhat slower.</p>
+</div>
+<div class="section" id="creating-universes">
+<h3>Creating universes<a class="headerlink" href="#creating-universes" title="Permalink to this headline">¶</a></h3>
+<p>A universe describes a complete molecular system consisting of any
+number of chemical objects and a specification of their interactions
+(i.e. a force field) and surroundings: boundary conditions, external
+fields, thermostats, etc. The universe classes are defined in module
+MMTK:</p>
+<ul class="simple">
+<li><a class="reference internal" href="modules.html#MMTK.Universe.InfiniteUniverse" title="MMTK.Universe.InfiniteUniverse"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Universe.InfiniteUniverse</span></tt></a> represents an infinite universe,
+without any boundary or periodic boundary conditions.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Universe.ParallelepipedicPeriodicUniverse" title="MMTK.Universe.ParallelepipedicPeriodicUniverse"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Universe.ParallelepipedicPeriodicUniverse</span></tt></a> represents
+a general periodic universe defined by three basis vectors.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Universe.OrthorhombicPeriodicUniverse" title="MMTK.Universe.OrthorhombicPeriodicUniverse"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Universe.OrthorhombicPeriodicUniverse</span></tt></a> represents a periodic
+universe with an orthorhombic elementary cell, whose size is defined
+by the three edge lengths. The edges are oriented along the axes of
+the coordinate system.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Universe.CubicPeriodicUniverse" title="MMTK.Universe.CubicPeriodicUniverse"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Universe.CubicPeriodicUniverse</span></tt></a> is a special case
+of <a class="reference internal" href="modules.html#MMTK.Universe.OrthorhombicPeriodicUniverse" title="MMTK.Universe.OrthorhombicPeriodicUniverse"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Universe.OrthorhombicPeriodicUniverse</span></tt></a> in which the
+elementary cell is cubic.</li>
+</ul>
+<p>Universes are created empty; the contents are then added to them.
+Three types of objects can be added to a universe: chemical objects
+(atoms, molecules, etc.), collections, and environment objects
+(thermostats etc.). It is also possible to remove objects from a
+universe.</p>
+</div>
+<div class="section" id="id3">
+<h3>Force fields<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>MMTK comes with several force fields, and permits the definition of
+additional force fields. Force fields are defined in module
+<tt class="xref py py-class docutils literal"><span class="pre">MMTK.ForceFields.ForceField</span></tt>. The most important built-in force
+field is the <a class="reference external" href="http://ambermd.org/#ff">Amber 99 force field</a>, represented by the
+class
+<tt class="xref py py-class docutils literal"><span class="pre">MMTK.ForceFields.Amber.AmberForceField.Amber99ForceField</span></tt>. It
+offers several strategies for electrostatic interactions, including
+Ewald summation and cutoff
+with charge neutralization and optional screening <a class="reference internal" href="#wolf1999"><em>[Wolf1999]</em></a>..</p>
+<p>In addition to the Amber 99 force field, there is the older Amber 94
+forcefield, a Lennard-Jones force field for noble gases (Class
+<tt class="xref py py-class docutils literal"><span class="pre">MMTK.ForceFields.LennardJonesFF</span></tt>) and an Elastic Network Model
+force field for protein normal mode calculations
+(<tt class="xref py py-class docutils literal"><span class="pre">MMTK.ForceFields.DeformationFF.CalphaForceField</span></tt>).</p>
+</div>
+</div>
+<div class="section" id="referring-to-objects-and-parts-of-objects">
+<h2>Referring to objects and parts of objects<a class="headerlink" href="#referring-to-objects-and-parts-of-objects" title="Permalink to this headline">¶</a></h2>
+<p>Most MMTK objects (in fact all except for atoms) have a hierarchical
+structure of parts of which they consist. For many operations it is
+necessary to access specific parts in this hierarchy.</p>
+<p>In most cases, parts are attributes with a specific name. For example,
+the oxygen atom in every water molecule is an attribute with the name
+&#8220;O&#8221;. Therefore if <tt class="docutils literal"><span class="pre">w</span></tt> refers to a water molecule, then <tt class="docutils literal"><span class="pre">w.O</span></tt>
+refers to its oxygen atom. For a more complicated example, if <tt class="docutils literal"><span class="pre">m</span></tt>
+refers to a molecule that has a methyl group called &#8220;M1&#8221;, then
+<tt class="docutils literal"><span class="pre">m.M1.C</span></tt> refers to the carbon atom of that methyl group. The names
+of attributes are defined in the database.</p>
+<p>Some objects consist of parts that need not have unique names, for
+example the elements of a collection, the residues in a peptide chain,
+or the chains in a protein. Such parts are accessed by indices; the
+objects that contain them are Python sequence types. Some examples:</p>
+<ul class="simple">
+<li>Asking for the number of items: if <tt class="docutils literal"><span class="pre">c</span></tt>
+refers to a collection, then <tt class="docutils literal"><span class="pre">len(c)</span></tt> is
+the number of its elements.</li>
+<li>Extracting an item: if <tt class="docutils literal"><span class="pre">p</span></tt> refers to a
+protein, then <tt class="docutils literal"><span class="pre">p[0]</span></tt> is its first peptide
+chain.</li>
+<li>Iterating over items: if <tt class="docutils literal"><span class="pre">p</span></tt> refers to a
+peptide chain, then <tt class="docutils literal"><span class="pre">for</span> <span class="pre">residue</span> <span class="pre">in</span> <span class="pre">p:</span> <span class="pre">print</span>
+<span class="pre">residue.position()</span></tt> will print the center of mass positions of
+all its residues.</li>
+</ul>
+<p>Peptide and nucleotide chains also allow the operation of slicing: if
+<tt class="docutils literal"><span class="pre">p</span></tt> refers to a peptide chain, then <tt class="docutils literal"><span class="pre">p[1:-1]</span></tt> is a subchain
+extending from the second to the next-to-last residue.</p>
+<div class="section" id="the-structure-of-peptide-and-nucleotide-chains">
+<h3>The structure of peptide and nucleotide chains<a class="headerlink" href="#the-structure-of-peptide-and-nucleotide-chains" title="Permalink to this headline">¶</a></h3>
+<p>Since peptide and nucleotide chains are not constructed from an explicit
+definition file in the database, it is not evident where their
+hierarchical structure comes from. But it is only the top-level
+structure that is treated in a special way. The constituents of peptide
+and nucleotide chains, residues, are normal group objects. The
+definition files for these group objects are in the MMTK standard
+database and can be freely inspected and even modified or overriden by
+an entry in a database that is listed earlier in MMTKDATABASE.</p>
+<p>Peptide chains are made up of amino acid residues, each of which is a
+group consisting of two other groups, one being called &#8220;peptide&#8221; and
+the other &#8220;sidechain&#8221;. The first group contains the peptide group and
+the C and H atoms; everything else is contained in the sidechain. The
+C atom of the fifth residue of peptide chain <tt class="docutils literal"><span class="pre">p</span></tt> is therefore
+referred to as <tt class="docutils literal"><span class="pre">p[4].peptide.C_alpha</span></tt>.</p>
+<p>Nucleotide chains are made up of nucleotide residues, each of which is
+a group consisting of two or three other groups. One group is called
+&#8220;sugar&#8221; and is either a ribose or a desoxyribose group, the second one
+is called &#8220;base&#8221; and is one the five standard bases. All but the first
+residue in a nucleotide chain also have a subgroup called &#8220;phosphate&#8221;
+describing the phosphate group that links neighbouring residues.</p>
+</div>
+</div>
+<div class="section" id="analyzing-and-modifying-atom-properties">
+<h2>Analyzing and modifying atom properties<a class="headerlink" href="#analyzing-and-modifying-atom-properties" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="general-operations">
+<h3>General operations<a class="headerlink" href="#general-operations" title="Permalink to this headline">¶</a></h3>
+<p>Many inquiry and modification operations act at the atom level and can
+equally well be applied to any object that is made up of atoms,
+i.e. atoms, molecules, collections, universes, etc.  These operations
+are defined once in a <a class="reference internal" href="glossary.html#term-mix-in-class"><em class="xref std std-term">Mix-in class</em></a> called
+<a class="reference internal" href="modules.html#MMTK.Collections.GroupOfAtoms" title="MMTK.Collections.GroupOfAtoms"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Collections.GroupOfAtoms</span></tt></a>, but are available for all
+objects for which they make sense. They include inquiry-type functions
+(total mass, center of mass, moment of inertia, bounding box, total
+kinetic energy etc.), coordinate modifications (translation, rotation,
+application of <a class="reference internal" href="#transformation"><em>Coordinate transformations</em></a>) and coordinate comparisons (RMS
+difference, optimal fits).</p>
+</div>
+<div class="section" id="coordinate-transformations">
+<span id="transformation"></span><h3>Coordinate transformations<a class="headerlink" href="#coordinate-transformations" title="Permalink to this headline">¶</a></h3>
+<p>The most common coordinate manipulations involve translations and
+rotations of specific parts of a system. It is often useful to refer
+to such an operation by a special kind of object, which permits the
+combination and analysis of transformations as well as its application
+to atomic positions.</p>
+<p>Transformation objects specify a general displacement consisting of a
+rotation around the origin of the coordinate system followed by a
+translation. They are defined in the module <tt class="docutils literal"><span class="pre">Scientific.Geometry</span></tt>,
+but for convenience the module <tt class="docutils literal"><span class="pre">MMTK</span></tt> contains a reference to them
+as well.  Transformation objects corresponding to pure translations
+can be created with <tt class="docutils literal"><span class="pre">Translation(displacement)</span></tt>; transformation
+objects describing pure rotations with <tt class="docutils literal"><span class="pre">Rotation(axis,</span> <span class="pre">angle)</span></tt> or
+<tt class="docutils literal"><span class="pre">Rotation(rotation_matrix)</span></tt>.  Multiplication of transformation
+objects returns a composite transformation.</p>
+<p>The translational component of any transformation can be obtained by
+calling the method <tt class="docutils literal"><span class="pre">translation()</span></tt>; the rotational component is
+obtained analogously with <tt class="docutils literal"><span class="pre">rotation()</span></tt>.  The displacement vector for
+a pure translation can be extracted with the method
+<tt class="docutils literal"><span class="pre">displacement()</span></tt>, a tuple of axis and angle can be extracted from a
+pure rotation by calling <tt class="docutils literal"><span class="pre">axisAndAngle()</span></tt>.</p>
+</div>
+<div class="section" id="atomic-property-objects">
+<span id="atom-property"></span><h3>Atomic property objects<a class="headerlink" href="#atomic-property-objects" title="Permalink to this headline">¶</a></h3>
+<p>Many properties in a molecular system are defined for each individual
+atom: position, velocity, mass, etc. Such properties are represented
+in special objects, defined in module MMTK:
+<a class="reference internal" href="modules.html#MMTK.ParticleProperties.ParticleScalar" title="MMTK.ParticleProperties.ParticleScalar"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ParticleProperties.ParticleScalar</span></tt></a> for scalar quantities,
+<a class="reference internal" href="modules.html#MMTK.ParticleProperties.ParticleVector" title="MMTK.ParticleProperties.ParticleVector"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ParticleProperties.ParticleVector</span></tt></a> for vector quantities,
+and <a class="reference internal" href="modules.html#MMTK.ParticleProperties.ParticleTensor" title="MMTK.ParticleProperties.ParticleTensor"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ParticleProperties.ParticleTensor</span></tt></a> for rank-2
+tensors.  All these objects can be indexed with an atom object to
+retrieve or change the corresponding value. Standard arithmetic
+operations are also defined, as well as some useful methods.</p>
+</div>
+<div class="section" id="configurations">
+<h3>Configurations<a class="headerlink" href="#configurations" title="Permalink to this headline">¶</a></h3>
+<p>A configuration object, represented by the class
+<a class="reference internal" href="modules.html#MMTK.ParticleProperties.Configuration" title="MMTK.ParticleProperties.Configuration"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ParticleProperties.Configuration</span></tt></a> is a special variant of
+a <a class="reference internal" href="modules.html#MMTK.ParticleProperties.ParticleVector" title="MMTK.ParticleProperties.ParticleVector"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ParticleProperties.ParticleVector</span></tt></a> object.  In addition
+to the atomic coordinates of a universe, it stores geometric
+parameters of a universe that are subject to change, e.g. the edge
+lengths of the elementary cell of a periodic universe.  Every universe
+has a current configuration, which is what all operations act on by
+default. It is also the configuration that is updated by
+minimizations, molecular dynamics, etc. The current configuration can
+be obtained by calling the method <tt class="docutils literal"><span class="pre">configuration()</span></tt>.</p>
+<p>There are two ways to create configuration objects: by making a copy
+of the current configuration (with <tt class="docutils literal"><span class="pre">universe.copyConfiguration()</span></tt>,
+or by reading a configuration from a <a class="reference internal" href="#id5"><em>trajectory</em></a>.</p>
+</div>
+</div>
+</div>
+<div class="section" id="minimization-and-molecular-dynamics">
+<h1>Minimization and Molecular Dynamics<a class="headerlink" href="#minimization-and-molecular-dynamics" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id5">
+<span id="id6"></span><h2>Trajectories<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<p>Minimization and dynamics algorithms produce sequences of configurations
+that are often stored for later analysis. In fact, they are often the
+most valuable result of a lengthy simulation run. To make sure that the
+use of trajectory files is not limited by machine compatibility, MMTK
+stores trajectories in <a class="reference external" href="http://www.unidata.ucar.edu/packages/netcdf/">netCDF</a>
+files. These files contain binary data, minimizing disk space usage, but
+are freely interchangeable between different machines. In addition,
+there are a number of programs that can perform standard operations on
+arbitrary netCDF files, and which can therefore be used directly on MMTK
+trajectory files. Finally, netCDF files are self-describing, i.e.
+contain all the information needed to interpret their contents.
+An MMTK trajectory file can thus be inspected and processed without
+requiring any further information.</p>
+<p>For illustrations of trajectory operations, see the <a class="reference internal" href="examples.html#example-trajectories"><em>examples</em></a>.</p>
+<p>Trajectory file objects are represented by the class
+<a class="reference internal" href="modules.html#MMTK.Trajectory.Trajectory" title="MMTK.Trajectory.Trajectory"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Trajectory.Trajectory</span></tt></a>. They can be opened for reading,
+writing, or modification. The data in trajectory files can be stored
+in single precision or double precision; single-precision is usually
+sufficient, but double-precision files are required to reproduce a
+given state of the system exactly.</p>
+<p>A trajectory is closed by calling the method <tt class="docutils literal"><span class="pre">close()</span></tt>.
+If anything has been written to a trajectory, closing it is required to
+guarantee that all data has been written to the file. Closing a
+trajectory after reading is recommended in order to prevent memory
+leakage, but is not strictly required.</p>
+<p>Newly created trajectories can contain all
+objects in a universe or any subset; this is useful for limiting the
+amount of disk space occupied by the file by not storing uninteresting
+parts of the system, e.g. the solvent surrounding a protein. It is
+even possible to create a trajectory for a subset of the atoms in a
+molecule, e.g. for only the C<sub>α</sub> atoms of a protein. The universe
+description that is stored in the trajectory file contains all
+chemical objects of which at least one atom is represented.</p>
+<p>When a trajectory is opened for reading, no universe object needs
+to be specified. In that case, MMTK creates a universe from
+the description contained in the trajectory file. This universe will
+contain the same objects as the one for which the trajectory file was
+created, but not necessarily have all the properties of the original
+universe (the description contains only the names and types of the
+objects in the universe, but not, for example, the force field). The
+universe can be accessed via the attribute universe
+of the trajectory.</p>
+<p>If the trajectory was created with partial data for some of the objects,
+reading data from it will set the data for the missing parts to
+&#8220;undefined&#8221;. Analysis operations on such systems must be done very
+carefully. In most cases, the trajectory data will contain the atomic
+configurations, and in that case the &#8220;defined&#8221; atoms can be extracted
+with the method <tt class="docutils literal"><span class="pre">atomsWithDefinedPositions()</span></tt>.</p>
+<p>MMTK trajectory files can store various data: atomic positions,
+velocities, energies, energy gradients etc. Each trajectory-producing
+algorithm offers a set of quantities from which the user can choose what
+to put into the trajectory. Since a detailed selection would be
+tedious, the data is divided into classes, e.g. the class &#8220;energy&#8221;
+stands for potential energy, kinetic energy, and whatever other
+energy-related quantities an algorithm produces.</p>
+<p>For optimizing I/O efficiency, the data layout in a trajectory file
+can be modified by the block_size parameter. Small
+block sizes favour reading or writing all data for one time step,
+whereas large block sizes (up to the number of steps in the trajectory)
+favour accessing a few values for all time steps, e.g. scalar
+variables like energies or trajectories for individual atoms. The
+default value of the block size is one.</p>
+<p>Every trajectory file contains a history of its creation. The creation
+of the file is logged with time and date, as well as each operation that
+adds data to it with parameters and the time/date of start and end. This
+information, together with the comment and the number of atoms and steps
+contained in the file, can be obtained with the function
+<a class="reference internal" href="modules.html#MMTK.Trajectory.trajectoryInfo" title="MMTK.Trajectory.trajectoryInfo"><tt class="xref py py-func docutils literal"><span class="pre">MMTK.Trajectory.trajectoryInfo()</span></tt></a>.</p>
+<p>It is possible to read data from a trajectory file that is being
+written to by another process. For efficiency, trajectory data is not
+written to the file at every time step, but only approximately every
+15 minutes. Therefore the amount of data available for reading may be
+somewhat less than what has been produced already.</p>
+</div>
+<div class="section" id="options-for-minimization-and-dynamics">
+<h2>Options for minimization and dynamics<a class="headerlink" href="#options-for-minimization-and-dynamics" title="Permalink to this headline">¶</a></h2>
+<p>Minimizers and dynamics integrators accept various optional parameter
+specifications. All of them are selected by keywords, have reasonable
+default values, and can be specified when the minimizer or integrator
+is created or when it is called. In addition to parameters that are
+specific to each algorithm, there is a general parameter <tt class="docutils literal"><span class="pre">actions</span></tt>
+that specifies actions that are executed periodically, including
+trajectory and console output.</p>
+<div class="section" id="periodic-actions">
+<h3>Periodic actions<a class="headerlink" href="#periodic-actions" title="Permalink to this headline">¶</a></h3>
+<p>Periodic actions are specified by the keyword parameter <tt class="docutils literal"><span class="pre">actions</span></tt>
+whose value is a list of periodic actions, which defaults to an empty
+list. Some of these actions are applicable to any
+trajectory-generating algorithm, especially the output actions. Others
+make sense only for specific algorithms or specific universes,
+e.g. the periodic rescaling of velocities during a Molecular Dynamics
+simulation.</p>
+<p>Each action is described by an action object. The step numbers for
+which an action is executed are specified by three parameters. The
+parameter <tt class="docutils literal"><span class="pre">first</span></tt> indicates the number of the first step for which
+the action is executed, and defaults to 0. The parameter <tt class="docutils literal"><span class="pre">last</span></tt>
+indicates the last step for which the action is executed, and default
+to <tt class="docutils literal"><span class="pre">None</span></tt>, meaning that the action is executed indefinitely. The
+parameter <tt class="docutils literal"><span class="pre">skip</span></tt> speficies how many steps are skipped between two
+executions of the action. The default value of 1 means that the action
+is executed at each step. Of course an action object may have
+additional parameters that are specific to its action.</p>
+<p>The output actions are defined in the module <a class="reference internal" href="modules.html#module-MMTK.Trajectory" title="MMTK.Trajectory"><tt class="xref py py-mod docutils literal"><span class="pre">MMTK.Trajectory</span></tt></a>
+and can be used with any trajectory-generating algorithm. They are:</p>
+<ul class="simple">
+<li><a class="reference internal" href="modules.html#MMTK.Trajectory.TrajectoryOutput" title="MMTK.Trajectory.TrajectoryOutput"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Trajectory.TrajectoryOutput</span></tt></a> for writing data to a
+trajectory. Note that it is possible to use several trajectory
+output actions simultaneously to write to multiple trajectories. It
+is thus possible, for example, to write a short dense trajectory
+during a dynamics run for analyzing short-time dynamics, and
+simultaneously a long-time trajectory with a larger step spacing,
+for analyzing long-time dynamics.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Trajectory.RestartTrajectoryOutput" title="MMTK.Trajectory.RestartTrajectoryOutput"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Trajectory.RestartTrajectoryOutput</span></tt></a>, which is a
+specialized version of <a class="reference internal" href="modules.html#MMTK.Trajectory.TrajectoryOutput" title="MMTK.Trajectory.TrajectoryOutput"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Trajectory.TrajectoryOutput</span></tt></a>.
+It writes the data that the algorithm needs in order to be restarted
+to a restart trajectory file.  A restart trajectory is a trajectory
+that stores a fixed number of steps which are reused cyclically,
+such that it always contain the last few steps of a trajectory.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Trajectory.LogOutput" title="MMTK.Trajectory.LogOutput"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Trajectory.LogOutput</span></tt></a> for text output
+of data to a file.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Trajectory.StandardLogOutput" title="MMTK.Trajectory.StandardLogOutput"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Trajectory.StandardLogOutput</span></tt></a>, a specialized
+version of <a class="reference internal" href="modules.html#MMTK.Trajectory.LogOutput" title="MMTK.Trajectory.LogOutput"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Trajectory.LogOutput</span></tt></a> that
+writes the data classes &#8220;time&#8221; and &#8220;energy&#8221; during the whole
+simulation run to standard output.</li>
+</ul>
+<p>The other periodic actions are meaningful only for Molecular Dynamics
+simulations:</p>
+<ul class="simple">
+<li><a class="reference internal" href="modules.html#MMTK.Dynamics.VelocityScaler" title="MMTK.Dynamics.VelocityScaler"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Dynamics.VelocityScaler</span></tt></a> is used for
+rescaling the velocities to force the kinetic energy to the value
+defined by some temperature. This is usually done during initial
+equilibration.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Dynamics.BarostatReset" title="MMTK.Dynamics.BarostatReset"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Dynamics.BarostatReset</span></tt></a> resets the
+barostat coordinate to zero and is during initial equilibration
+of systems in the NPT ensemble.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Dynamics.Heater" title="MMTK.Dynamics.Heater"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Dynamics.Heater</span></tt></a> rescales the velocities
+like  <a class="reference internal" href="modules.html#MMTK.Dynamics.VelocityScaler" title="MMTK.Dynamics.VelocityScaler"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Dynamics.VelocityScaler</span></tt></a>, but
+increases the temperature step by step.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Dynamics.TranslationRemover" title="MMTK.Dynamics.TranslationRemover"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Dynamics.TranslationRemover</span></tt></a> subtracts
+the global translational velocity of the system from all individual
+atomic velocities. This prevents a slow but systematic energy flow
+into the degrees of freedom of global translation, which occurs
+with most MD integrators due to non-perfect conservation of momentum.</li>
+<li><a class="reference internal" href="modules.html#MMTK.Dynamics.RotationRemover" title="MMTK.Dynamics.RotationRemover"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Dynamics.RotationRemover</span></tt></a> subtracts
+the global angular velocity of the system from all individual
+atomic velocities. This prevents a slow but systematic energy flow
+into the degrees of freedom of global rotation, which occurs
+with most MD integrators due to non-perfect conservation of angular
+momentum.</li>
+</ul>
+</div>
+<div class="section" id="fixed-atoms">
+<h3>Fixed atoms<a class="headerlink" href="#fixed-atoms" title="Permalink to this headline">¶</a></h3>
+<p>During the course of a minimization or molecular dynamics algorithm,
+the atoms move to different positions. It is possible to exclude
+specific atoms from this movement, i.e. fixing them at their initial
+positions.  This has no influence whatsoever on energy or force
+calculations; the only effect is that the atoms&#8217; positions never
+change. Fixed atoms are specified by giving them an attribute fixed
+with a value of one. Atoms that do not have an attributefixed, or one
+with a value of zero, move according to the selected algorithm.</p>
+</div>
+</div>
+<div class="section" id="energy-minimization">
+<span id="id7"></span><h2>Energy minimization<a class="headerlink" href="#energy-minimization" title="Permalink to this headline">¶</a></h2>
+<p>MMTK has two energy minimizers using different algorithms: steepest
+descent (<a class="reference internal" href="modules.html#MMTK.Minimization.SteepestDescentMinimizer" title="MMTK.Minimization.SteepestDescentMinimizer"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Minimization.SteepestDescentMinimizer</span></tt></a>) and
+conjugate gradient (<a class="reference internal" href="modules.html#MMTK.Minimization.ConjugateGradientMinimizer" title="MMTK.Minimization.ConjugateGradientMinimizer"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Minimization.ConjugateGradientMinimizer</span></tt></a>)
+. Steepest descent minimization is very inefficient if the goal is to
+find a local minimum of the potential energy. However, it has the
+advantage of always moving towards the minimum that is closest to the
+starting point and is therefore ideal for removing bad contacts in a
+unreasonably high energy configuration. For finding local minima, the
+conjugate gradient algorithm should be used.</p>
+<p>Both minimizers accept three specific optional parameters:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">steps</span></tt> (an integer) to specify the maximum number of
+steps (default is 100)</li>
+<li><tt class="docutils literal"><span class="pre">step_size</span></tt> (a number)
+to specify an initial step length used in the search for a minimum
+(default is 2 pm)</li>
+<li><tt class="docutils literal"><span class="pre">convergence</span></tt> (a number)
+to specify the gradient norm (more precisely the root-mean-square
+length) at which the minimization should stop (default is 0.01
+kJ/mol/nm)</li>
+</ul>
+<p>There are three classes of trajectory data: &#8220;energy&#8221; includes the
+potential energy and the norm of its gradient, &#8220;configuration&#8221; stands
+for the atomic positions, and &#8220;gradients&#8221; stands for the energy
+gradients at each atom position.</p>
+<p>The following example performs 100 steps of steepest descent
+minimization without producing any trajectory or printed output:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields</span> <span class="kn">import</span> <span class="n">Amber99ForceField</span>
+<span class="kn">from</span> <span class="nn">MMTK.Minimization</span> <span class="kn">import</span> <span class="n">SteepestDescentMinimizer</span>
+<span class="n">universe</span> <span class="o">=</span> <span class="n">InfiniteUniverse</span><span class="p">(</span><span class="n">Amber99ForceField</span><span class="p">())</span>
+<span class="n">universe</span><span class="o">.</span><span class="n">protein</span> <span class="o">=</span> <span class="n">Protein</span><span class="p">(</span><span class="s">&#39;insulin&#39;</span><span class="p">)</span>
+<span class="n">minimizer</span> <span class="o">=</span> <span class="n">SteepestDescentMinimizer</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+<span class="n">minimizer</span><span class="p">(</span><span class="n">steps</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See also the example file <a class="reference internal" href="examples.html#example-normalmodes"><em>modes.py</em></a>.</p>
+</div>
+<div class="section" id="molecular-dynamics">
+<h2>Molecular dynamics<a class="headerlink" href="#molecular-dynamics" title="Permalink to this headline">¶</a></h2>
+<p>The techniques described in this section are illustrated by several
+<a class="reference internal" href="examples.html#example-moleculardynamics"><em>examples</em></a>.</p>
+<div class="section" id="velocities">
+<h3>Velocities<a class="headerlink" href="#velocities" title="Permalink to this headline">¶</a></h3>
+<p>The integration of the classical equations of motion for an atomic
+system requires not only positions, but also velocities for all atoms.
+Usually the velocities are initialized to random values drawn from a
+normal distribution with a variance corresponding to a certain
+temperature. This is done by calling the method
+<a class="reference internal" href="modules.html#MMTK.Universe.Universe.initializeVelocitiesToTemperature" title="MMTK.Universe.Universe.initializeVelocitiesToTemperature"><tt class="xref py py-func docutils literal"><span class="pre">initializeVelocitiesToTemperature()</span></tt></a>
+on a universe. Note that the velocities are assigned atom by atom; no
+attempt is made to remove global translation or rotation of the total
+system or any part of the system.</p>
+<p>During equilibration of a system, it is common to multiply all
+velocities by a common factor to restore the intended temperature. This
+can done explicitly by calling the method
+<a class="reference internal" href="modules.html#MMTK.Universe.Universe.scaleVelocitiesToTemperature" title="MMTK.Universe.Universe.scaleVelocitiesToTemperature"><tt class="xref py py-func docutils literal"><span class="pre">scaleVelocitiesToTemperature()</span></tt></a>
+on a universe, or by using the action object <a class="reference internal" href="modules.html#MMTK.Dynamics.VelocityScaler" title="MMTK.Dynamics.VelocityScaler"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Dynamics.VelocityScaler</span></tt></a>.</p>
+</div>
+<div class="section" id="distance-constraints">
+<h3>Distance constraints<a class="headerlink" href="#distance-constraints" title="Permalink to this headline">¶</a></h3>
+<p>A common technique to eliminate the fastest (usually uninteresting)
+degrees of freedom, permitting a larger integration time step,
+is the use of distance constraints on some or all chemical bonds.
+MMTK allows the use of distance constraints on any pair of
+atoms, even though constraining anything but chemical bonds
+is not recommended due to considerable modifications of the
+dynamics of the system <a class="reference internal" href="#vangunsteren1982"><em>[vanGunsteren1982]</em></a>,
+<a class="reference internal" href="#hinsen1995"><em>[Hinsen1995]</em></a>.</p>
+<p>MMTK permits the definition of distance constraints on all atom pairs
+in an object that are connected by a chemical bond by calling the
+method setBondConstraints. Usually this is called
+for a complete universe, but it can also be called for a chemical
+object or a collection of chemical objects. The
+<a class="reference internal" href="modules.html#MMTK.ChemicalObjects.ChemicalObject.removeDistanceConstraints" title="MMTK.ChemicalObjects.ChemicalObject.removeDistanceConstraints"><tt class="xref py py-func docutils literal"><span class="pre">removeDistanceConstraints()</span></tt></a>
+removes all distance constraints from the object for which it is called.</p>
+<p>Constraints defined as described above are automatically taken into
+account by Molecular Dynamics integrators. It is also possible to
+enforce the constraints explicitly by calling the method
+<a class="reference internal" href="modules.html#MMTK.Universe.Universe.enforceConstraints" title="MMTK.Universe.Universe.enforceConstraints"><tt class="xref py py-func docutils literal"><span class="pre">enforceConstraints()</span></tt></a> for a universe. This has the
+effect of modifying the configuration and the velocities (if
+velocities exist) in order to make them compatible with the
+constraints.</p>
+</div>
+<div class="section" id="thermostats-and-barostats">
+<h3>Thermostats and barostats<a class="headerlink" href="#thermostats-and-barostats" title="Permalink to this headline">¶</a></h3>
+<p>A standard Molecular Dynamics integration allows time averages
+corresponding to the NVE ensemble, in which the number of molecules,
+the system volume, and the total energy are constant. This ensemble
+does not represent typical experimental conditions very well.
+Alternative ensembles are the NVT ensemble, in which the temperature
+is kept constant by a thermostat, and the NPT ensemble, in which
+temperature and pressure are kept constant by a thermostat and a
+barostat. To obtain these ensembles in MMTK, thermostat and barostat
+objects must be added to a universe. In the presence of these objects,
+the Molecular Dynamics integrator will use the extended-systems method
+for producing the correct ensemble. The classes to be used are
+<a class="reference internal" href="modules.html#MMTK.Environment.NoseThermostat" title="MMTK.Environment.NoseThermostat"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Environment.NoseThermostat</span></tt></a> and <a class="reference internal" href="modules.html#MMTK.Environment.AndersenBarostat" title="MMTK.Environment.AndersenBarostat"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Environment.AndersenBarostat</span></tt></a>.</p>
+</div>
+<div class="section" id="integration">
+<h3>Integration<a class="headerlink" href="#integration" title="Permalink to this headline">¶</a></h3>
+<p>A Molecular Dynamics integrator based on the &#8220;Velocity Verlet&#8221;
+algorithm <a class="reference internal" href="#swope1982"><em>[Swope1982]</em></a>, which was extended
+to handle distance constraints as well as thermostats and
+barostats <a class="reference internal" href="#kneller1996"><em>[Kneller1996]</em></a>, is implemented by the
+class <a class="reference internal" href="modules.html#MMTK.Dynamics.VelocityVerletIntegrator" title="MMTK.Dynamics.VelocityVerletIntegrator"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Dynamics.VelocityVerletIntegrator</span></tt></a>.
+It has two optional keyword parameters:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">steps</span></tt> (an integer) to specify the number
+of steps (default is 100)</li>
+<li><tt class="docutils literal"><span class="pre">delta_t</span></tt> (a number) to specify the time step
+(default 1 fs)</li>
+</ul>
+<p>There are three classes of trajectory data: &#8220;energy&#8221; includes the
+potential energy and the kinetic energy, as well as the energies of
+thermostat and barostat coordinates if they exist, &#8220;time&#8221; stands for the time,
+&#8220;thermodynamic&#8221; stand for temperature and pressure,
+&#8220;configuration&#8221; stands for the atomic positions, &#8220;velocities&#8221; stands for
+the atomic velocities, and &#8220;gradients&#8221; stands for the energy gradients
+at each atom position.</p>
+<p>The following example performs a 1000 step dynamics integration, storing
+every 10th step in a trajectory file and removing the total translation
+and rotation every 50th step:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields</span> <span class="kn">import</span> <span class="n">Amber99ForceField</span>
+<span class="kn">from</span> <span class="nn">MMTK.Dynamics</span> <span class="kn">import</span> <span class="n">VelocityVerletIntegrator</span><span class="p">,</span> \
+                          <span class="n">TranslationRemover</span><span class="p">,</span> \
+                          <span class="n">RotationRemover</span>
+<span class="kn">from</span> <span class="nn">MMTK.Trajectory</span> <span class="kn">import</span> <span class="n">TrajectoryOutput</span>
+<span class="n">universe</span> <span class="o">=</span> <span class="n">InfiniteUniverse</span><span class="p">(</span><span class="n">Amber99ForceField</span><span class="p">())</span>
+<span class="n">universe</span><span class="o">.</span><span class="n">protein</span> <span class="o">=</span> <span class="n">Protein</span><span class="p">(</span><span class="s">&#39;insulin&#39;</span><span class="p">)</span>
+<span class="n">universe</span><span class="o">.</span><span class="n">initializeVelocitiesToTemperature</span><span class="p">(</span><span class="mf">300.</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">K</span><span class="p">)</span>
+<span class="n">actions</span> <span class="o">=</span> <span class="p">[</span><span class="n">TranslationRemover</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span> \
+           <span class="n">RotationRemover</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span> \
+           <span class="n">TrajectoryOutput</span><span class="p">(</span><span class="s">&quot;insulin.nc&quot;</span><span class="p">,</span> \
+           <span class="p">(</span><span class="s">&quot;configuration&quot;</span><span class="p">,</span> <span class="s">&quot;energy&quot;</span><span class="p">,</span> <span class="s">&quot;time&quot;</span><span class="p">),</span> \
+           <span class="mi">0</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">10</span><span class="p">)]</span>
+<span class="n">integrator</span> <span class="o">=</span> <span class="n">VelocityVerletIntegrator</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">delta_t</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">fs</span><span class="p">,</span> \
+                                      <span class="n">actions</span> <span class="o">=</span> <span class="n">actions</span><span class="p">)</span>
+<span class="n">integrator</span><span class="p">(</span><span class="n">steps</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="snapshots">
+<h2>Snapshots<a class="headerlink" href="#snapshots" title="Permalink to this headline">¶</a></h2>
+<p>A snapshot generator allows writing the current system state to a
+trajectory. It works much like a zero-step minimization or dynamics run,
+i.e. it takes the same optional arguments for specifying the trajectory
+and protocol output. A snapshot generator is created using the
+class <a class="reference internal" href="modules.html#MMTK.Trajectory.SnapshotGenerator" title="MMTK.Trajectory.SnapshotGenerator"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Trajectory.SnapshotGenerator</span></tt></a>.</p>
+</div>
+</div>
+<div class="section" id="id8">
+<h1>Normal modes<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h1>
+<p>Normal mode analysis provides an analytic description of the dynamics
+of a system near a minimum using an harmonic approximation to the
+potential. Before a normal mode analysis can be started, the system
+must be brought to a local minimum of the potential energy by
+<a class="reference internal" href="#energy-minimization"><em>energy minimization</em></a>, except when special
+force fields designed only for normal mode analysis are used
+(e.g. <a class="reference internal" href="modules.html#MMTK.ForceFields.CalphaFF.CalphaForceField" title="MMTK.ForceFields.CalphaFF.CalphaForceField"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ForceFields.CalphaFF.CalphaForceField</span></tt></a>). See
+also the <a class="reference internal" href="examples.html#example-normalmodes"><em>Normal Modes</em></a> examples.</p>
+<p>A standard normal mode analysis is performed by creating a normal
+modes object, implemented in the classes
+<a class="reference internal" href="modules.html#MMTK.NormalModes.EnergeticModes.EnergeticModes" title="MMTK.NormalModes.EnergeticModes.EnergeticModes"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.NormalModes.EnergeticModes.EnergeticModes</span></tt></a>,
+<a class="reference internal" href="modules.html#MMTK.NormalModes.VibrationalModes.VibrationalModes" title="MMTK.NormalModes.VibrationalModes.VibrationalModes"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.NormalModes.VibrationalModes.VibrationalModes</span></tt></a>, and
+<a class="reference internal" href="modules.html#MMTK.NormalModes.BrownianModes.BrownianModes" title="MMTK.NormalModes.BrownianModes.BrownianModes"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.NormalModes.BrownianModes.BrownianModes</span></tt></a>. A normal
+mode object behaves like a sequence of mode objects, which store the
+atomic displacement vectors corresponding to each mode and the
+associated force constant, vibrational frequency, or inverse
+relaxation time.</p>
+<p>For short-ranged potentials, it is advantageous to store the second
+derivatives of the potential in a sparse-matrix form and to use
+an iterative method to determine some or all modes. This permits
+the treatment of larger systems that would normally require huge
+amounts of memory.</p>
+<p>Another approach to deal with large systems is the restriction to
+low-frequency modes which are supposed to be well representable by
+linear combinations of a given set of basis vectors. The basis vectors
+can be obtained from a basis for the full Cartesian space by
+elimination of known fast degrees of freedom (e.g. bonds); the
+module <a class="reference internal" href="modules.html#module-MMTK.Subspace" title="MMTK.Subspace"><tt class="xref py py-mod docutils literal"><span class="pre">MMTK.Subspace</span></tt></a> contains support classes for this
+approach. It is also possible to construct a suitable basis vector set
+from small-deformation vector fields
+(e.g. <a class="reference internal" href="modules.html#MMTK.FourierBasis.FourierBasis" title="MMTK.FourierBasis.FourierBasis"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.FourierBasis.FourierBasis</span></tt></a>).</p>
+</div>
+<div class="section" id="analysis-operations">
+<h1>Analysis operations<a class="headerlink" href="#analysis-operations" title="Permalink to this headline">¶</a></h1>
+<p>Analysis is the most non-standard part of molecular simulations.
+The quantities that must be calculated depend strongly on the
+system and the problem under study. MMTK provides a wide range
+of elementary operations that inquire the state of the system,
+as well as several more complex analysis tools. Some of them are
+demonstrated in the <a class="reference internal" href="examples.html#examples"><em>example</em></a> section.</p>
+<div class="section" id="properties-of-chemical-objects-and-universes">
+<h2>Properties of chemical objects and universes<a class="headerlink" href="#properties-of-chemical-objects-and-universes" title="Permalink to this headline">¶</a></h2>
+<p>Many operations access and modify various properties of an object. They
+are defined for the most general type of object: anything that can be
+broken down to atoms, i.e. atoms, molecules, collections, universes,
+etc., i.e. in the class <a class="reference internal" href="modules.html#MMTK.Collections.GroupOfAtoms" title="MMTK.Collections.GroupOfAtoms"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Collections.GroupOfAtoms</span></tt></a>.</p>
+<p>The most elementary operations are inquiries about specific properties
+of an object: number of atoms, total mass, center of mass, total momentum,
+total charge, etc. There are also operations that compare two different
+conformations of a system. Finally, there are special operations
+for analyzing conformations of peptide chains and proteins.</p>
+<p>Geometrical operations in periodic universes require special care.
+Whenever a distance vector between two points in a systems is
+evaluated, the minimum-image convention must be used in order to
+obtain consistent results. MMTK provides routines for finding
+these distance vectors as well as distances, angles, and dihedral
+angles between any points. Because these operations depend on the
+topology and geometry of the universe, they are implemented as
+methods in class <a class="reference internal" href="modules.html#MMTK.Universe.Universe" title="MMTK.Universe.Universe"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Universe.Universe</span></tt></a>
+and its subclasses. Of course they are available for non-periodic
+universes as well.</p>
+<p>Universes also provide methods for obtaining <a class="reference internal" href="#atom-property"><em>atom property</em></a> objects that describe the state of the system
+(configurations, velocities, masses), and for restoring the system
+state from a <a class="reference internal" href="#id5"><em>trajectory</em></a> file.</p>
+</div>
+<div class="section" id="energy-evaluation">
+<h2>Energy evaluation<a class="headerlink" href="#energy-evaluation" title="Permalink to this headline">¶</a></h2>
+<p>Energy evaluation requires a force field, and therefore all the
+methods in this section are defined only for universe objects, i.e. in
+class <a class="reference internal" href="modules.html#MMTK.Universe.Universe" title="MMTK.Universe.Universe"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Universe.Universe</span></tt></a>.  However, they all take an
+optional arguments (anything that can be broken down into atoms) that
+indicates for which subset of the universe the energy is to be
+evaluated. In addition to the potential energy, energy gradients and
+second derivatives (force constants) can be obtained, if the force
+field implements them. There is also a method that returns a
+dictionary containing the values for all the individual force field
+terms, which is often useful for analysis.</p>
+</div>
+<div class="section" id="surfaces-and-volumes">
+<h2>Surfaces and volumes<a class="headerlink" href="#surfaces-and-volumes" title="Permalink to this headline">¶</a></h2>
+<p>Surfaces and volumes can be analyzed for anything consisting of
+atoms. Both quantities are defined by assigning a radius to each atom;
+the surface of the resulting conglomerate of overlapping spheres is
+taken to be the surface of the atom group. Atom radii for surface
+determination are usually called &#8220;van der Waals radii&#8221;, but there is
+no unique method for determining them. MMTK uses the values from
+<a class="reference internal" href="#bondi1964"><em>[Bondi1964]</em></a>. However, users can change these values for each
+individual atom by assigning a new value to the attribute
+<tt class="docutils literal"><span class="pre">vdW_radius</span></tt>.</p>
+<p>The operations provided in <a class="reference internal" href="modules.html#module-MMTK.MolecularSurface" title="MMTK.MolecularSurface"><tt class="xref py py-mod docutils literal"><span class="pre">MMTK.MolecularSurface</span></tt></a>
+include basic surface and volume calculation, determination of
+exposed atoms, and identification of contacts between two objects.</p>
+</div>
+</div>
+<div class="section" id="miscellaneous-operations">
+<h1>Miscellaneous operations<a class="headerlink" href="#miscellaneous-operations" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="saving-loading-and-copying-objects">
+<h2>Saving, loading, and copying objects<a class="headerlink" href="#saving-loading-and-copying-objects" title="Permalink to this headline">¶</a></h2>
+<p>MMTK provides an easy way to store (almost) arbitrary objects in files
+and retrieve them later. All objects of interest to users can be
+stored, including chemical objects, collections, universes, normal
+modes, configurations, etc. It is also possible to store standard
+Python objects such as numbers, lists, dictionaries etc., as well as
+practically any user-defined objects. Storage is based on the standard
+Python module pickle.</p>
+<p>Objects are saved with <tt class="xref py py-func docutils literal"><span class="pre">MMTK.save()</span></tt> and restored with
+<tt class="xref py py-func docutils literal"><span class="pre">MMTK.load()</span></tt>.  If several objects are to be stored in a single
+file, use tuples: <tt class="docutils literal"><span class="pre">save((object1,</span> <span class="pre">object2),</span> <span class="pre">filename)</span></tt> and
+<tt class="docutils literal"><span class="pre">object1,</span> <span class="pre">object2</span> <span class="pre">=</span> <span class="pre">load(filename)</span></tt> to retrieve the objects.</p>
+<p>Note that storing an object in a file implies storing all objects
+referenced by it as well, such that the size of the file can become
+larger than expected. For example, a configuration object contains
+a reference to the universe for which it is defined. Therefore
+storing a configuration object means storing the whole universe
+as well. However, nothing is ever written twice to the same
+file. If you store a list or a tuple containing a universe and
+a configuration for it, the universe is written only once.</p>
+<p>Frequently it is also useful to copy an object, such as a molecule or
+a configuration. There are two functions (which are actually taken
+from the Python standard library module copy) for this purpose, which
+have a somewhat different behaviour for container-type objects (lists,
+dictionaries, collections etc.). <tt class="xref py py-func docutils literal"><span class="pre">MMTK.copy()</span></tt> returns a copy of
+the given object. For a container object, it returns a new container
+object which contains the same objects as the original one. If the
+intention is to get a container object which contains copies of the
+original contents, then <tt class="docutils literal"><span class="pre">MMTK.deepcopy(object)</span></tt> should be used. For
+objects that are not container-type objects, there is no difference
+between the two functions.</p>
+</div>
+<div class="section" id="exporting-to-specific-file-formats-and-visualization">
+<h2>Exporting to specific file formats and visualization<a class="headerlink" href="#exporting-to-specific-file-formats-and-visualization" title="Permalink to this headline">¶</a></h2>
+<p>MMTK can write objects in specific file formats that can be used by
+other programs. Three file formats are supported: the PDB format,
+widely used in computational chemistry, the DCD format for
+trajectories, written by the programs CHARMM, X-Plor, and NAMDm, and
+read by many visualization programs, and the VRML format, understood
+by VRML browsers as a representation of a three-dimensional scene for
+visualization. MMTK also provides a more general interface that can
+generate graphics objects in any representation if a special module
+for that representation exists. In addition to facilitating the
+implementation of new graphics file formats, this approach also
+permits the addition of custom graphics elements (lines, arrows,
+spheres, etc.)  to molecular representations.</p>
+<div class="section" id="pdb-vrml-and-dcd-files">
+<h3>PDB, VRML, and DCD files<a class="headerlink" href="#pdb-vrml-and-dcd-files" title="Permalink to this headline">¶</a></h3>
+<p>Any chemical object, collection, or universe can be written to a PDB
+or VRML file by calling the method <tt class="docutils literal"><span class="pre">writeToFile</span></tt>, defined in class
+<a class="reference internal" href="modules.html#MMTK.Collections.GroupOfAtoms" title="MMTK.Collections.GroupOfAtoms"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Collections.GroupOfAtoms</span></tt></a>.  PDB files are read via the
+class <a class="reference internal" href="modules.html#MMTK.PDB.PDBConfiguration" title="MMTK.PDB.PDBConfiguration"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.PDB.PDBConfiguration</span></tt></a>.  DCD files can be read by a
+<a class="reference internal" href="modules.html#MMTK.DCD.DCDReader" title="MMTK.DCD.DCDReader"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.DCD.DCDReader</span></tt></a> object.  For writing DCD files, there is
+the function <a class="reference internal" href="modules.html#MMTK.DCD.writeDCDPDB" title="MMTK.DCD.writeDCDPDB"><tt class="xref py py-func docutils literal"><span class="pre">MMTK.DCD.writeDCDPDB()</span></tt></a>, which also creates a
+compatible PDB file without which the DCD file could not be
+interpreted.</p>
+<p>Special care must be taken to ensure a correct mapping of atom numbers
+when reading from a DCD file. In MMTK, each atom object has a unique
+identity and atom numbers, also used internally for efficiency, are
+not strictly necessary and are not used anywhere in MMTK&#8217;s application
+programming interface. DCD file, however, simply list coordinates
+sorted by atom number. For interpreting DCD files, another file must
+be available which allows the identification of atoms from their
+number and vice versa; this can for example be a PDB file.</p>
+<p>When reading DCD files, MMTK assumes that the atom order in the DCD
+file is identical to the internal atom numbering of the universe for
+which the DCD file is read. This assumption is in general valid only
+if the universe has been created from a PDB file that is compatible
+with the DCD file, without any additions or removals.</p>
+</div>
+<div class="section" id="visualization-and-animation">
+<h3>Visualization and animation<a class="headerlink" href="#visualization-and-animation" title="Permalink to this headline">¶</a></h3>
+<p>The most common need for file export is visualization. All objects
+that can be visualized (chemical systems and subsets thereof, normal
+mode objects, trajectories) provide a method view
+which creates temporary export files, starts a visualization program,
+and deletes the temporary files. Depending on the object type there are
+various optional parameters.</p>
+<p>MMTK also allows visualization of normal modes and trajectories using
+animation. Since not all visualization programs permit animation, and
+since there is no standard way to ask for it, animation is implemented
+only for the programs <a class="reference external" href="http://www.msc.edu/msc/docs/xmol/">XMol</a>
+and <a class="reference external" href="http://www.ks.uiuc.edu/Research/vmd/">VMD</a>. Animation is available for
+normal modes, trajectories, and arbitrary sequences of configurations
+(see function <a class="reference internal" href="modules.html#MMTK.Visualization.viewSequence" title="MMTK.Visualization.viewSequence"><tt class="xref py py-func docutils literal"><span class="pre">MMTK.Visualization.viewSequence()</span></tt></a>).</p>
+<p>For more specialized needs, MMTK permits the creation of graphical
+representations of most of its objects via general graphics modules that
+have to be provided externally. Suitable modules are provided in the
+package Scientific.Visualization and cover VRML (version 1), VRML2
+(aka VRML97), and the molecular visualization program VMD. Modules for other
+representations (e.g. rendering programs) can be written easily; it is
+recommended to use the existing modules as an example. The generation
+of graphics objects is handled by the method graphicsObjects,
+defined in the class <a class="reference internal" href="modules.html#MMTK.Visualization.Viewable" title="MMTK.Visualization.Viewable"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Visualization.Viewable</span></tt></a>,
+which is a <a class="reference internal" href="glossary.html#term-mix-in-class"><em class="xref std std-term">Mix-in class</em></a> that makes
+graphics objects generation available for all objects that define
+chemical systems or parts thereof, as well as for certain other objects
+that are viewable.</p>
+<p>The explicit generation of graphics objects permits the mixture of
+different graphical representations for various parts of a system,
+as well as the combination of MMTK-generated graphics objects with
+arbitrary other graphics objects, such as lines, arrows, or spheres.
+All graphics objects are finally combined into a scene object (also
+defined in the various graphics modules) in order to be displayed.
+See also the <a class="reference internal" href="examples.html#example-visualization"><em>visualization</em></a> examples.</p>
+</div>
+</div>
+<div class="section" id="fields">
+<h2>Fields<a class="headerlink" href="#fields" title="Permalink to this headline">¶</a></h2>
+<p>For analyzing or visualizing atomic properties that change little over
+short distances, it is often convenient to represent these properties as
+functions of position instead of one value per atom. Functions of
+position are also known as fields, and mathematical techniques for the
+analysis of fields have proven useful in many branches of physics. Such
+a field can be obtained by averaging over the values corresponding to
+the atoms in a small region of space. MMTK provides classes for
+scalar and vector field in module <a class="reference internal" href="modules.html#module-MMTK.Field" title="MMTK.Field"><tt class="xref py py-mod docutils literal"><span class="pre">MMTK.Field</span></tt></a>.
+See also the example <a class="reference internal" href="examples.html#example-miscellaneous"><em>vector_field.py</em></a>.</p>
+</div>
+<div class="section" id="charge-fitting">
+<h2>Charge fitting<a class="headerlink" href="#charge-fitting" title="Permalink to this headline">¶</a></h2>
+<p>A frequent problem in determining force field parameters is the
+determination of partial charges for the atoms of a molecule by fitting
+to the electrostatic potential around the molecule, which is obtained
+from quantum chemistry programs. Although this is essentially a
+straightforward linear least-squares problem, many procedures that are
+in common use do not use state-of-the-art techniques and may yield
+erroneous results. MMTK provides a charge fitting method that is
+numerically stable and allows the imposition of constraints on the
+charges. It is implemented in module <a class="reference internal" href="modules.html#module-MMTK.ChargeFit" title="MMTK.ChargeFit"><tt class="xref py py-mod docutils literal"><span class="pre">MMTK.ChargeFit</span></tt></a>.
+See also the example <a class="reference internal" href="examples.html#example-miscellaneous"><em>charge_fit.py</em></a>.</p>
+</div>
+</div>
+<div class="section" id="constructing-the-database">
+<span id="database"></span><h1>Constructing the database<a class="headerlink" href="#constructing-the-database" title="Permalink to this headline">¶</a></h1>
+<p>MMTK uses a database of chemical entities to define the properties of
+atoms, molecules, and related objects. This database consists of plain
+text files, more precisely short Python programs, whose names are the
+names of the object types. This chapter explains how to construct and
+manage these files. Note that the standard database already contains
+many definitions, in particular for proteins and nucleic acids.
+You do not need to read this chapter unless you want to add your
+own molecule definitions.</p>
+<p>MMTK&#8217;s database does not have to reside in a single place. It can
+consist of any number of subdatabases, each of which can be a
+directory or a URL. Typically the database consists of at least two
+parts: MMTK&#8217;s standard definitions and a user&#8217;s personal definitions.
+When looking up an object type in the database, MMTK checks the value
+of the environment variable MMTKDATABASE. The value of this variable
+must be a list of subdatabase locations seperated by white space. If
+the variable MMTKDATABASE is not defined, MMTK uses a default value
+that contains the path &#8221;.mmtk/Database&#8221; in the user&#8217;s home directory
+followed by MMTK&#8217;s standard database, which resides in the directory
+Database within the MMTK package directory (on many Unix systems this
+is <tt class="docutils literal"><span class="pre">/usr/local/lib/python2.x/site-packages/MMTK</span></tt>).  MMTK checks the
+subdatabases in the order in which they are mentioned in MMTKDATABASE.</p>
+<p>Each subdatabase contains directories corresponding to the object
+classes, i.e. Atoms (atom definitions), Groups (group definitions),
+Molecules (molecule definitions), Complexes (complex definitions),
+Proteins (protein definitions), and PDB (Protein Data Bank files).
+These directories contain the definition files, whose names may
+not contain any upper-case letters. These file names correspond
+to the object types, e.g. the call <tt class="docutils literal"><span class="pre">MMTK.Molecule('Water')</span></tt>
+will cause MMTK to look for the file Molecules/water in the database
+(note that the names are converted to lower case).</p>
+<p>The remaining sections of this chapter explain how the individual
+definition files are constructed. Keep in mind that each file is
+actually a Python program, so of course standard Python syntax rules
+apply.</p>
+<div class="section" id="atom-definitions">
+<h2>Atom definitions<a class="headerlink" href="#atom-definitions" title="Permalink to this headline">¶</a></h2>
+<p>An atom definition in MMTK describes a chemical element, such as
+&#8220;hydrogen&#8221;. This should not be confused with the &#8220;atom types&#8221; used in
+force field descriptions and in some modelling programs. As a
+consequence, it is rarely necessary to add atom definitions to MMTK.</p>
+<p>Atom definition files are short and of essentially identical format.
+This is the definition for carbon:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;carbon&#39;</span>
+<span class="n">symbol</span> <span class="o">=</span> <span class="s">&#39;C&#39;</span>
+<span class="n">mass</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">12</span><span class="p">,</span> <span class="mf">98.90</span><span class="p">),</span> <span class="p">(</span><span class="mf">13.003354826</span><span class="p">,</span> <span class="mf">1.10</span><span class="p">)]</span>
+<span class="n">color</span> <span class="o">=</span> <span class="s">&#39;black&#39;</span>
+<span class="n">vdW_radius</span> <span class="o">=</span> <span class="mf">0.17</span>
+</pre></div>
+</div>
+<p>The name should be meaningful to users, but is not used by MMTK
+itself. The symbol, however, is used to identify chemical elements. It
+must be exactly equal to the symbol defined by IUPAC, including
+capitalization (e.g. &#8216;Cl&#8217; for chlorine). The mass can be either a number
+or a list of tuples, as shown above. Each tuple defines an isotope by
+its mass and its percentage of occurrence; the percentages must add up
+to 100. The color is used for VRML output and must equal one of the
+color names defined in the module VRML. The van der Waals radius is used
+for the calculation of molecular volumes and surfaces; the values are
+taken from <a class="reference internal" href="#bondi1964"><em>[Bondi1964]</em></a>.</p>
+<p>An application program can create an isolated atom with <tt class="docutils literal"><span class="pre">Atom('c')</span></tt>
+or, specifying an initial position, with <tt class="docutils literal"><span class="pre">Atom('c',</span>
+<span class="pre">position=Vector(0.,1.,0.))</span></tt>. The element name can use any combination
+of upper and lower case letters, which are considered equivalent.</p>
+</div>
+<div class="section" id="group-definitions">
+<h2>Group definitions<a class="headerlink" href="#group-definitions" title="Permalink to this headline">¶</a></h2>
+<p>Group definitions in MMTK exist to facilitate the definition of
+molecules by avoiding the frequent repetition of common combinations.
+MMTK doesn&#8217;t give any physical meaning to groups. Groups can contain
+atoms and other groups. Their definitions look exactly like molecule
+definitions; the only difference between groups and molecules is the way
+they are used.</p>
+<p>This is the definition of a methyl group:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;methyl group&#39;</span>
+<span class="n">C</span>  <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;C&#39;</span><span class="p">)</span>
+<span class="n">H1</span> <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">)</span>
+<span class="n">H2</span> <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">)</span>
+<span class="n">H3</span> <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">)</span>
+<span class="n">bonds</span> <span class="o">=</span> <span class="p">[</span><span class="n">Bond</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">H1</span><span class="p">),</span> <span class="n">Bond</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">H2</span><span class="p">),</span> <span class="n">Bond</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">H3</span><span class="p">)]</span>
+<span class="n">pdbmap</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;MTH&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;C&#39;</span><span class="p">:</span> <span class="n">C</span><span class="p">,</span> <span class="s">&#39;H1&#39;</span><span class="p">:</span> <span class="n">H1</span><span class="p">,</span> <span class="s">&#39;H2&#39;</span><span class="p">:</span> <span class="n">H2</span><span class="p">,</span> <span class="s">&#39;H3&#39;</span><span class="p">:</span> <span class="n">H3</span><span class="p">})]</span>
+<span class="n">amber_atom_type</span> <span class="o">=</span> <span class="p">{</span><span class="n">C</span><span class="p">:</span> <span class="s">&#39;CT&#39;</span><span class="p">,</span> <span class="n">H1</span><span class="p">:</span> <span class="s">&#39;HC&#39;</span><span class="p">,</span> <span class="n">H2</span><span class="p">:</span> <span class="s">&#39;HC&#39;</span><span class="p">,</span> <span class="n">H3</span><span class="p">:</span> <span class="s">&#39;HC&#39;</span><span class="p">}</span>
+<span class="n">amber_charge</span> <span class="o">=</span> <span class="p">{</span><span class="n">C</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span> <span class="n">H1</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">H2</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">H3</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>The name should be meaningful to users, but is not used by MMTK
+itself. The following lines create the atoms in the group and assign
+them to variables. These variables become attributes of whatever
+object uses this group; their names can be anything that is a legal
+Python name. The list of bonds, however, must be assigned to the name
+<tt class="docutils literal"><span class="pre">bonds</span></tt>. The bond list is used by force fields and for
+visualization.</p>
+<p>The name <tt class="docutils literal"><span class="pre">pdbmap</span></tt> is used for reading and writing PDB files. Its
+value must be a list of tuples, where each tuple defines one PDB
+residue. The first element of the tuple is the residue name, which is
+used only for output. The second element is a dictionary that maps PDB
+atom names to the actual atoms. The <tt class="docutils literal"><span class="pre">pdbmap</span></tt> entry of any object can be
+overridden by an entry in a higher-level object. Therefore the entry for
+a group is only used for atoms that do not occur in the entry for a
+molecule that contains this group.</p>
+<p>The remaining lines in the definition file contain information
+specific to force fields, in this case the Amber force field. The
+dictionary <tt class="docutils literal"><span class="pre">amber_atom_type</span></tt> defines the atom type for each atom;
+the dictionary <tt class="docutils literal"><span class="pre">amber_charge</span></tt> defines the partial charges. As for
+<tt class="docutils literal"><span class="pre">pdbmap</span></tt> entries, these definitions can be overridden by
+higher-level definitions.</p>
+</div>
+<div class="section" id="molecule-definitions">
+<h2>Molecule definitions<a class="headerlink" href="#molecule-definitions" title="Permalink to this headline">¶</a></h2>
+<p>Molecules are typically used directly in application programs, but they
+can also be used in the definition of complexes. Molecule definitions
+can use atoms and groups.</p>
+<p>This is the definition of a water molecule:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;water&#39;</span>
+<span class="n">structure</span> <span class="o">=</span> \
+<span class="s">&quot;  O   </span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">+</span> \
+<span class="s">&quot; / \  </span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">+</span> \
+<span class="s">&quot;H   H </span><span class="se">\n</span><span class="s">&quot;</span>
+<span class="n">O</span>  <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;O&#39;</span><span class="p">)</span>
+<span class="n">H1</span> <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">)</span>
+<span class="n">H2</span> <span class="o">=</span> <span class="n">Atom</span><span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">)</span>
+<span class="n">bonds</span> <span class="o">=</span> <span class="p">[</span><span class="n">Bond</span><span class="p">(</span><span class="n">O</span><span class="p">,</span> <span class="n">H1</span><span class="p">),</span> <span class="n">Bond</span><span class="p">(</span><span class="n">O</span><span class="p">,</span> <span class="n">H2</span><span class="p">)]</span>
+<span class="n">pdbmap</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;HOH&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;O&#39;</span><span class="p">:</span> <span class="n">O</span><span class="p">,</span> <span class="s">&#39;H1&#39;</span><span class="p">:</span> <span class="n">H1</span><span class="p">,</span> <span class="s">&#39;H2&#39;</span><span class="p">:</span> <span class="n">H2</span><span class="p">})]</span>
+<span class="n">pdb_alternative</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;OH2&#39;</span><span class="p">:</span> <span class="s">&#39;O&#39;</span><span class="p">}</span>
+<span class="n">amber_atom_type</span> <span class="o">=</span> <span class="p">{</span><span class="n">O</span><span class="p">:</span> <span class="s">&#39;OW&#39;</span><span class="p">,</span> <span class="n">H1</span><span class="p">:</span> <span class="s">&#39;HW&#39;</span><span class="p">,</span> <span class="n">H2</span><span class="p">:</span> <span class="s">&#39;HW&#39;</span><span class="p">}</span>
+<span class="n">amber_charge</span> <span class="o">=</span> <span class="p">{</span><span class="n">O</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.83400</span><span class="p">,</span> <span class="n">H1</span><span class="p">:</span> <span class="mf">0.41700</span><span class="p">,</span> <span class="n">H2</span><span class="p">:</span> <span class="mf">0.41700</span><span class="p">}</span>
+<span class="n">configurations</span> <span class="o">=</span> <span class="p">{</span>
+<span class="s">&#39;default&#39;</span><span class="p">:</span> <span class="n">ZMatrix</span><span class="p">([[</span><span class="n">H1</span><span class="p">],</span> \
+                   <span class="p">[</span><span class="n">O</span><span class="p">,</span>  <span class="n">H1</span><span class="p">,</span>  <span class="mf">0.9572</span><span class="o">*</span><span class="n">Ang</span><span class="p">],</span> \
+                   <span class="p">[</span><span class="n">H2</span><span class="p">,</span> <span class="n">O</span><span class="p">,</span>   <span class="mf">0.9572</span><span class="o">*</span><span class="n">Ang</span><span class="p">,</span>  <span class="n">H1</span><span class="p">,</span>  <span class="mf">104.52</span><span class="o">*</span><span class="n">deg</span><span class="p">]])</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The name should be meaningful to users, but is not used by MMTK
+itself. The structure is optional and not used by MMTK either. The
+following lines create the atoms in the group and assign them to
+variables. These variables become attributes of the molecule,
+i.e. when a water molecule is created in an application program by <tt class="docutils literal"><span class="pre">w</span>
+<span class="pre">=</span> <span class="pre">Molecule('water')</span></tt>, then <tt class="docutils literal"><span class="pre">w.H1</span></tt> will refer to its first hydrogen
+atom. The names of these variables can be any legal Python names. The
+list of bonds, however, must be assigned to the name <tt class="docutils literal"><span class="pre">bonds</span></tt>. The
+bond list is used by force fields and for visualization.</p>
+<p>The name <tt class="docutils literal"><span class="pre">pdbmap</span></tt> is used for reading and writing PDB files. Its
+value must be a list of tuples, where each tuple defines one PDB
+residue. The first element of the tuple is the residue name, which is
+used only for output. The second element is a dictionary that maps PDB
+atom names to the actual atoms. The <tt class="docutils literal"><span class="pre">pdbmap</span></tt> entry of any object can be
+overridden by an entry in a higher-level object, i.e. in the case of a
+molecule a complex containing it. The name <tt class="docutils literal"><span class="pre">pdb_alternative</span></tt> allows
+to read PDB files that use non-standard names. When a
+PDB atom name is not found in the <tt class="docutils literal"><span class="pre">pdbmap</span></tt>, an attempt is made to
+translate it to another name using <tt class="docutils literal"><span class="pre">pdb_alternative</span></tt>.</p>
+<p>The two following lines in the definition file contain information
+specific to force fields, in this case the Amber force field. The
+dictionary <tt class="docutils literal"><span class="pre">amber_atom_type</span></tt> defines the atom type for each atom; the
+dictionary <tt class="docutils literal"><span class="pre">amber_charge</span></tt> defines the partial charges. As for pdbmap
+entries, these definitions can be overridden by higher-level
+definitions.</p>
+<p>The name <tt class="docutils literal"><span class="pre">configurations</span></tt> can be defined to be a dictionary of
+configurations for the molecule. During the construction of a molecule,
+a configuration can be specified via an optional parameter, e.g.
+<tt class="docutils literal"><span class="pre">w</span> <span class="pre">=</span> <span class="pre">Molecule('water',</span> <span class="pre">configuration='default')</span></tt>. The names of the
+configurations can be arbitrary; only the name &#8220;default&#8221; has a special
+meaning; it is applied by default if no other configuration is specified
+when constructing the molecule. If there is no default configuration,
+and no other configuration is explicitly specified, then the molecule is
+created with undefined atomic positions.</p>
+<p>There are three ways of describing configurations:</p>
+<ul>
+<li><p class="first">By a Z-Matrix:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">ZMatrix</span><span class="p">([[</span><span class="n">H1</span><span class="p">],</span> \
+         <span class="p">[</span><span class="n">O</span><span class="p">,</span>  <span class="n">H1</span><span class="p">,</span>  <span class="mf">0.9572</span><span class="o">*</span><span class="n">Ang</span><span class="p">],</span> \
+         <span class="p">[</span><span class="n">H2</span><span class="p">,</span> <span class="n">O</span><span class="p">,</span>   <span class="mf">0.9572</span><span class="o">*</span><span class="n">Ang</span><span class="p">,</span>  <span class="n">H1</span><span class="p">,</span>  <span class="mf">104.52</span><span class="o">*</span><span class="n">deg</span><span class="p">]])</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">By Cartesian coordinates:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">Cartesian</span><span class="p">({</span><span class="n">O</span><span class="p">:</span>  <span class="p">(</span> <span class="mf">0.004</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.00518</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+<span class="n">H1</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.092</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.00518</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+<span class="n">H2</span><span class="p">:</span> <span class="p">(</span> <span class="mf">0.028</span><span class="p">,</span>  <span class="mf">0.0875</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">)})</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">By a PDB file:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">PDBFile</span><span class="p">(</span><span class="s">&#39;water.pdb&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The PDB file must be in the database subdirectory PDB, unless a full
+path name is specified for it.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="complex-definitions">
+<h2>Complex definitions<a class="headerlink" href="#complex-definitions" title="Permalink to this headline">¶</a></h2>
+<p>Complexes are defined much like molecules, except that they are composed
+of molecules and atoms; no groups are allowed, and neither are bonds.</p>
+</div>
+<div class="section" id="protein-definitions">
+<h2>Protein definitions<a class="headerlink" href="#protein-definitions" title="Permalink to this headline">¶</a></h2>
+<p>Protein definitions can take many different forms, depending on the
+source of input data and the type of information that is to be stored.
+For proteins it is particularly useful that database definition files
+are Python programs with all their flexibility.</p>
+<p>The most common way of constructing a protein is from a PDB file. This
+is an example for a protein definition:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;insulin&#39;</span>
+<span class="c"># Read the PDB file.</span>
+<span class="n">conf</span> <span class="o">=</span> <span class="n">PDBConfiguration</span><span class="p">(</span><span class="s">&#39;insulin.pdb&#39;</span><span class="p">)</span>
+<span class="c"># Construct the peptide chains.</span>
+<span class="n">chains</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">createPeptideChains</span><span class="p">()</span>
+<span class="c"># Clean up</span>
+<span class="k">del</span> <span class="n">conf</span>
+</pre></div>
+</div>
+<p>The name should be meaningful to users, but is not used by MMTK
+itself. The second command reads the sequences of all peptide chains
+from a PDB file. Everything which is not a peptide chain is ignored.
+The following line constructs a PeptideChain object (a special
+molecule) for each chain from the PDB sequence. This involves
+constructing positions for any missing hydrogen atoms.
+Finally, the temporary data (&#8220;conf&#8221;) is deleted, otherwise
+it would remain in memory forever.</p>
+<p>The net result of a protein definition file is the assignment of a list
+of molecules (usually PeptideChain objects) to the variable &#8220;chains&#8221;.
+MMTK then constructs a protein object from it. To use the above example,
+an application program would use the command
+<tt class="docutils literal"><span class="pre">p</span> <span class="pre">=</span> <span class="pre">Protein('insulin')</span></tt>. The construction of the protein involves
+one nontrivial (but automatic) step: the construction of disulfide
+bridges for pairs of cystein residues whose sulfur atoms have a distance
+of less then 2.5 Ångström.</p>
+</div>
+</div>
+<div class="section" id="threads-and-parallelization">
+<h1>Threads and parallelization<a class="headerlink" href="#threads-and-parallelization" title="Permalink to this headline">¶</a></h1>
+<p>This chapter explains the use of threads by MMTK and MMTK&#8217;s
+parallelization support. This is an advanced topic, and not essential
+for the majority MMTK applications. You need to read this chapter only
+if you use multiprocessor computers, or if you want to implement
+multi-threaded programs that use MMTK.</p>
+<p>Threads are different execution paths through a program that are
+executed in parallel, at least in principle; real parallel execution
+is possible only on multiprocessor systems. MMTK makes use of threads
+in two ways, which are conceptually unrelated: parallelization of
+energy evaluation on shared-memory multiprocessor computers, and
+support for multithreaded applications. Thread support is not
+available on all machines; you can check if yous system supports
+threads by starting a Python interpreter and typing import
+threading. If this produces an error message, then your
+system does not support threads, otherwise it is available in Python
+and also in MMTK. If you do not have thread support in Python although
+you know that your operating system supports threads, you might have
+compiled your Python interpreter without thread support; in that case,
+MMTK does not have thread support either.</p>
+<p>Another approach to parallelization is message passing: several
+processors work on a program and communicate via a fast network to
+share results. A standard library, called MPI (Message Passing
+Interface), has been developped for sharing data by message passing,
+and implementations are available for all parallel computers currently
+on the market. MMTK contains elementary support for parallelization by
+message passing: only the energy evaluation has been paralellized,
+using a data-replication strategy, which is simple but not the most
+efficient for large systems. MPI support is disabled by default.
+Enabling it involves modifying the file Src/Setup.template prior
+to compilation of MMTK. Furthermore, an MPI-enabled installation of
+ScientificPython is required, and the mpipython executable must
+be used instead of the standard Python interpreter.</p>
+<p>Threads and message passing can be used together to use a cluster of
+shared-memory machines most efficiently. However, this requires that
+the thread and MPI implementations being used work together; sometimes
+there are conflicts, for example due to the use of the same signal in
+both libraries. Refer to your system documentation for details.</p>
+<p>The use of threads for parallelization on shared-memory systems is
+very simple: Just set the environment variable MMTK_ENERGY_THREADS to
+the desired value.  If this variable is not defined, the default value
+is 1, i.e. energy evaluations are performed serially. For choosing an
+appropriate value for this environment variable, the following points
+should be considered:</p>
+<ul class="simple">
+<li>The number of energy evaluation threads should not be larger than the
+number of processors that are fully dedicated to the MMTK application.
+A larger number of threads does not lead to wrong results,
+but it can increase the total execution time.</li>
+<li>MMTK assumes that all processors are equally fast. If you use a
+heteregenous multiprocessor machine, in which the processors have
+different speeds, you might find that the total execution time is
+larger than without threads.</li>
+<li>The use of threads incurs some computational overhead. For very small
+systems, it is usually faster not to use threads.</li>
+<li>Not all energy terms necessarily support threads. Of the force field
+terms that part of MMTK, only the multipole algorithms for
+electrostatic interactions does not support threads, but additional
+force fields defined outside MMTK might also be affected. MMTK
+automatically evaluates such energy terms with a single thread, such
+that there is no risk of getting wrong results. However, you might not
+get the performance you expect.</li>
+<li>If second derivatives of the potential energy are requested, energy
+evaluation is handled by a single thread. An efficient implementation
+of multi-threaded energy evaluation would require a separate copy of
+the second-derivative matrix per thread. This approach needs too much
+memory for big systems to be feasible. Since second derivatives are
+almost exclusively used for normal mode calculations, which need only
+a single energy evaluation, multi-thread support is not particularly
+important anyway.</li>
+</ul>
+<p>Parallelization via message passing is somewhat more complicated.
+In the current MMTK parallelization model, all processors execute
+the same program and replicate all tasks, with the important exception
+of energy evaluation. Energy terms are divided evenly between the
+processors, and at the end the energy and gradient values are shared
+by all machines. This is the only step involving network communication.
+Like thread-based parallelization, message-passing parallelization
+does not support the evaluation of second derivatives.</p>
+<p>A special problem with message-passing systems is input and output.
+The MMTK application must ensure that output files are written by
+only one processor, and that all processors correctly access input
+files, especially in the case of each processor having its own
+disk space. See the example <a class="reference internal" href="examples.html#example-mpi"><em>md.py</em></a>
+for illustration.</p>
+<p>Multithreaded applications are applications that use multiple threads
+in order to simplify the implementation of certain algorithms, i.e.
+not necessarily with the goal of profiting from multiple processors.
+If you plan to write a multithreaded application that uses MMTK,
+you should first make sure you understand threading support in
+Python. In particular, you should keep in mind that the global
+interpreter lock prevents the effective use of multiple processors
+by Python code; only one thread at a time can execute interpreted
+Python code. C code called from Python can permit other threads
+to execute simultaneously; MMTK does this for energy evaluation,
+molecular dynamics integration, energy minimization, and normal
+mode calculation.</p>
+<p>A general problem in multithreaded applications is access to resources
+that are shared among the threads. In MMTK applications, the most
+important shared resource is the description of the chemical systems,
+i.e. universe objects and their contents. Chaos would result if two
+threads tried to modify the state of a universe simultaneously, or
+even if one thread uses information that is simultaneously being
+modified by another thread. Synchronization is therefore a critical
+part of multithreaded application. MMTK provides two synchronization
+aids, both of which described in the documentation of the class
+<a class="reference internal" href="modules.html#MMTK.Universe.Universe" title="MMTK.Universe.Universe"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Universe.Universe</span></tt></a>: the configuration change
+lock (methods <a class="reference internal" href="modules.html#MMTK.Universe.Universe.acquireConfigurationChangeLock" title="MMTK.Universe.Universe.acquireConfigurationChangeLock"><tt class="xref py py-func docutils literal"><span class="pre">acquireConfigurationChangeLock()</span></tt></a>
+and <a class="reference internal" href="modules.html#MMTK.Universe.Universe.releaseConfigurationChangeLock" title="MMTK.Universe.Universe.releaseConfigurationChangeLock"><tt class="xref py py-func docutils literal"><span class="pre">releaseConfigurationChangeLock()</span></tt></a>),
+and the universe state lock (methods
+<tt class="xref py py-func docutils literal"><span class="pre">acquireReadStateChangeLock()</span></tt>,
+<tt class="xref py py-func docutils literal"><span class="pre">releaseReadStateChangeLock()</span></tt>,
+<tt class="xref py py-func docutils literal"><span class="pre">acquireWriteStateChangeLock()</span></tt>, and
+<tt class="xref py py-func docutils literal"><span class="pre">releaseWriteStateChangeLock()</span></tt>).
+Only a few common universe operations manipulate the universe
+state lock in order to avoid conflicts with other threads;
+these methods are marked as thread-safe in the description.
+All other operations should only be
+used inside a code section that is protected by the appropriate
+manipulation of the state lock. The configuration change lock is less
+critical; it is used only by the molecular dynamics and energy
+minimization algorithms in MMTK.</p>
+</div>
+<div class="section" id="bibliography">
+<h1>Bibliography<a class="headerlink" href="#bibliography" title="Permalink to this headline">¶</a></h1>
+<p id="bondi1964">[Bondi1964]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">A. Bondi</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1021/j100785a001">van der Waals Volumes and Radii</a></div>
+<div class="line">1964</div>
+</div>
+</div></blockquote>
+<p id="eisenhaber1993">[Eisenhaber1993]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">F. Eisenhaber, P. Argos</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1002/jcc.540141103">Improved Strategy in Analytic Surface Calculation for Molecular
+Systems: Handling of Singularities and Computational Efficiency</a></div>
+<div class="line">1993</div>
+</div>
+</div></blockquote>
+<p id="eisenhaber1995">[Eisenhaber1995]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">F. Eisenhaber, P. Lijnzaad, P. Argos, M. Scharf</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1002/jcc.540160303(YoYo)">The Double Cubic Lattice Method: Efficient Approaches to Numerical
+Integration of Surface Area and Volume and to Dot Surface
+Contouring of Molecular Assemblies</a></div>
+<div class="line">1995</div>
+</div>
+</div></blockquote>
+<p id="hinsen1995">[Hinsen1995]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Konrad Hinsen, Gerald R. Kneller</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1103/PhysRevE.52.6868">Influence of constraints on the dynamics of polypeptide chains</a></div>
+<div class="line">1995</div>
+</div>
+</div></blockquote>
+<p id="hinsen1997">[Hinsen1997]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Konrad Hinsen, Benoit Roux</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1002/(SICI)1096-987X(199702)18:3%3C368::AID-JCC7%3E3.0.CO;2-S">An accurate potential for simulating proton transfer in acetylacetone</a></div>
+<div class="line">1997</div>
+</div>
+</div></blockquote>
+<p id="hinsen1998">[Hinsen1998]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Konrad Hinsen</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1002/(SICI)1097-0134(19981115)33:3%3C417::AID-PROT10%3E3.0.CO;2-8">Analysis of domain motions by approximate normal mode calculations</a></div>
+<div class="line">1998</div>
+</div>
+</div></blockquote>
+<p id="hinsen1999">[Hinsen1999]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Konrad Hinsen, Aline Thomas, Martin J. Field</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1002/(SICI)1097-0134(19990215)34:3%3C369::AID-PROT9%3E3.0.CO;2-F">Analysis of domain motions in large proteins</a></div>
+<div class="line">1999</div>
+</div>
+</div></blockquote>
+<p id="hinsen1999a">[Hinsen1999a]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Konrad Hinsen, Gerald R. Kneller</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1080/08927020008025373">Projection methods for the analysis of complex motions in macromolecules</a></div>
+<div class="line">1999</div>
+</div>
+</div></blockquote>
+<p id="hinsen1999b">[Hinsen1999b]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Konrad Hinsen, Gerald R. Kneller</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1063/1.480441">A simplified force field for describing vibrational protein
+dynamics over the whole frequency range</a></div>
+<div class="line">1999</div>
+</div>
+</div></blockquote>
+<p id="hinsen2000">[Hinsen2000]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Konrad Hinsen, Andrei J. Petrescu, Serge Dellerue,
+Marie-Claire Bellissent-Funel, Gerald R. Kneller.</div>
+<div class="line-block">
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1016/S0301-0104(00)00222-6">Harmonicity in slow protein dynamics</a></div>
+</div>
+<div class="line">2000</div>
+</div>
+</div></blockquote>
+<p id="kneller1990">[Kneller1990]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Gerald R. Kneller</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1080/08927029108022453">Superposition of molecular structures using quaternions</a></div>
+<div class="line">1990</div>
+</div>
+</div></blockquote>
+<p id="kneller1996">[Kneller1996]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Gerald R. Kneller, Thomas Mülders</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1103/PhysRevE.54.6825">Nosé-Andersen dynamics of partially rigid molecules:
+Coupling of all degrees of freedom to heat and pressure baths</a></div>
+<div class="line">1996</div>
+</div>
+</div></blockquote>
+<p id="swope1982">[Swope1982]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">W.C. Swope, H.C. Andersen, P.H. Berens, K.R. Wilson</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1063/1.442716">A computer simulation method for the calculation of equilibrium
+constants for the formation of physical clusters of molecules:
+application to small water clusters</a></div>
+<div class="line">1982</div>
+</div>
+</div></blockquote>
+<p id="vangunsteren1982">[vanGunsteren1982]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">Wilfred F. van Gunsteren, Martin Karplus</div>
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1021/ma00234a015">Effect of Constraints on the Dynamics of Macromolecules</a></div>
+<div class="line">1982</div>
+</div>
+</div></blockquote>
+<p id="viduna2000">[Viduna2000]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">David Viduna, Konrad Hinsen, Gerald R. Kneller</div>
+<div class="line-block">
+<div class="line"><a class="reference external" href="http://dx.doi.org/10.1103/PhysRevE.62.3986">The influence of molecular flexibility on DNA radiosensitivity:
+A simulation study</a></div>
+</div>
+<div class="line">2000</div>
+</div>
+</div></blockquote>
+<p id="wolf1999">[Wolf1999]</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">D. Wolf, P. Keblinski, S.R. Philpot, J. Eggebrecht</div>
+<div class="line"><cite>Exact method for the simulation of Coulombic systems by spherically
+truncated, pairwise r:sup:</cite>-1` summation
+&lt;<a class="reference external" href="http://dx.doi.org/10.1063/1.478738">http://dx.doi.org/10.1063/1.478738</a>&gt;`_</div>
+<div class="line">1999</div>
+</div>
+</div></blockquote>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">MMTK User&#8217;s Guide</a></li>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#using-mmtk">Using MMTK</a></li>
+<li><a class="reference internal" href="#modules">Modules</a></li>
+<li><a class="reference internal" href="#objects">Objects</a><ul>
+<li><a class="reference internal" href="#chemical-objects">Chemical objects</a></li>
+<li><a class="reference internal" href="#collections">Collections</a></li>
+<li><a class="reference internal" href="#force-fields">Force fields</a></li>
+<li><a class="reference internal" href="#universes">Universes</a></li>
+<li><a class="reference internal" href="#minimizers-and-integrators">Minimizers and integrators</a></li>
+<li><a class="reference internal" href="#trajectories">Trajectories</a></li>
+<li><a class="reference internal" href="#variables">Variables</a></li>
+<li><a class="reference internal" href="#normal-modes">Normal modes</a></li>
+<li><a class="reference internal" href="#non-mmtk-objects">Non-MMTK objects</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#the-chemical-database">The chemical database</a></li>
+<li><a class="reference internal" href="#id1">Force fields</a></li>
+<li><a class="reference internal" href="#units">Units</a></li>
+<li><a class="reference internal" href="#a-simple-example">A simple example</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#constructing-a-molecular-system">Constructing a molecular system</a><ul>
+<li><a class="reference internal" href="#creating-chemical-objects">Creating chemical objects</a><ul>
+<li><a class="reference internal" href="#proteins-peptide-chains-and-nucleotide-chains">Proteins, peptide chains, and nucleotide chains</a></li>
+<li><a class="reference internal" href="#lattices">Lattices</a></li>
+<li><a class="reference internal" href="#random-numbers">Random numbers</a></li>
+<li><a class="reference internal" href="#id2">Collections</a></li>
+<li><a class="reference internal" href="#creating-universes">Creating universes</a></li>
+<li><a class="reference internal" href="#id3">Force fields</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#referring-to-objects-and-parts-of-objects">Referring to objects and parts of objects</a><ul>
+<li><a class="reference internal" href="#the-structure-of-peptide-and-nucleotide-chains">The structure of peptide and nucleotide chains</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analyzing-and-modifying-atom-properties">Analyzing and modifying atom properties</a><ul>
+<li><a class="reference internal" href="#general-operations">General operations</a></li>
+<li><a class="reference internal" href="#coordinate-transformations">Coordinate transformations</a></li>
+<li><a class="reference internal" href="#atomic-property-objects">Atomic property objects</a></li>
+<li><a class="reference internal" href="#configurations">Configurations</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#minimization-and-molecular-dynamics">Minimization and Molecular Dynamics</a><ul>
+<li><a class="reference internal" href="#id5">Trajectories</a></li>
+<li><a class="reference internal" href="#options-for-minimization-and-dynamics">Options for minimization and dynamics</a><ul>
+<li><a class="reference internal" href="#periodic-actions">Periodic actions</a></li>
+<li><a class="reference internal" href="#fixed-atoms">Fixed atoms</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#energy-minimization">Energy minimization</a></li>
+<li><a class="reference internal" href="#molecular-dynamics">Molecular dynamics</a><ul>
+<li><a class="reference internal" href="#velocities">Velocities</a></li>
+<li><a class="reference internal" href="#distance-constraints">Distance constraints</a></li>
+<li><a class="reference internal" href="#thermostats-and-barostats">Thermostats and barostats</a></li>
+<li><a class="reference internal" href="#integration">Integration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#snapshots">Snapshots</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id8">Normal modes</a></li>
+<li><a class="reference internal" href="#analysis-operations">Analysis operations</a><ul>
+<li><a class="reference internal" href="#properties-of-chemical-objects-and-universes">Properties of chemical objects and universes</a></li>
+<li><a class="reference internal" href="#energy-evaluation">Energy evaluation</a></li>
+<li><a class="reference internal" href="#surfaces-and-volumes">Surfaces and volumes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#miscellaneous-operations">Miscellaneous operations</a><ul>
+<li><a class="reference internal" href="#saving-loading-and-copying-objects">Saving, loading, and copying objects</a></li>
+<li><a class="reference internal" href="#exporting-to-specific-file-formats-and-visualization">Exporting to specific file formats and visualization</a><ul>
+<li><a class="reference internal" href="#pdb-vrml-and-dcd-files">PDB, VRML, and DCD files</a></li>
+<li><a class="reference internal" href="#visualization-and-animation">Visualization and animation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#fields">Fields</a></li>
+<li><a class="reference internal" href="#charge-fitting">Charge fitting</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#constructing-the-database">Constructing the database</a><ul>
+<li><a class="reference internal" href="#atom-definitions">Atom definitions</a></li>
+<li><a class="reference internal" href="#group-definitions">Group definitions</a></li>
+<li><a class="reference internal" href="#molecule-definitions">Molecule definitions</a></li>
+<li><a class="reference internal" href="#complex-definitions">Complex definitions</a></li>
+<li><a class="reference internal" href="#protein-definitions">Protein definitions</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#threads-and-parallelization">Threads and parallelization</a></li>
+<li><a class="reference internal" href="#bibliography">Bibliography</a></li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">MMTK User Guide</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="glossary.html"
+                        title="next chapter">Glossary</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/mmtk.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="glossary.html" title="Glossary"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="MMTK User Guide"
+             >previous</a> |</li>
+        <li><a href="index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

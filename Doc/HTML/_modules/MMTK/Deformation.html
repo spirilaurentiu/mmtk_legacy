@@ -1,0 +1,529 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Deformation &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Deformation</h1><div class="highlight"><pre>
+<span class="c"># Deformation energy module</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Deformation energies in proteins</span>
+
+<span class="sd">This module implements deformational energies for use in the analysis</span>
+<span class="sd">of motions and conformational changes in macromolecules. A description</span>
+<span class="sd">of the techniques can be found in the following articles:</span>
+
+<span class="sd">  |  K. Hinsen</span>
+<span class="sd">  |  Analysis of domain motions by approximate normal mode calculations</span>
+<span class="sd">  |  Proteins 33 (1998): 417-429</span>
+
+<span class="sd">  |  K. Hinsen, A. Thomas, M.J. Field</span>
+<span class="sd">  |  Analysis of domain motions in large proteins</span>
+<span class="sd">  |  Proteins 34 (1999): 369-382</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">MMTK_forcefield</span> <span class="kn">import</span> <span class="n">NonbondedList</span>
+    <span class="kn">from</span> <span class="nn">MMTK_deformation</span> <span class="kn">import</span> <span class="n">deformation</span><span class="p">,</span> <span class="n">reduceDeformation</span><span class="p">,</span> \
+                                 <span class="n">reduceFiniteDeformation</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="k">pass</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">ParticleProperties</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+<span class="c">#</span>
+<span class="c"># Deformation energy evaluations</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">DeformationEvaluationFunction</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">=</span> <span class="n">universe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span> <span class="o">=</span> <span class="n">fc_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span> <span class="o">=</span> <span class="n">cutoff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">factor</span> <span class="o">=</span> <span class="n">factor</span>
+
+        <span class="n">nothing</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span> <span class="o">=</span> <span class="n">NonbondedList</span><span class="p">(</span><span class="n">nothing</span><span class="p">,</span> <span class="n">nothing</span><span class="p">,</span> <span class="n">nothing</span><span class="p">,</span>
+                                   <span class="n">universe</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forms</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">form</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;unknown functional form&quot;</span><span class="p">)</span>
+
+    <span class="n">forms</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;exponential&#39;</span><span class="p">,</span> <span class="s">&#39;calpha&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">newConfiguration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DeformationFunction"><a class="viewcode-back" href="../../modules.html#MMTK.Deformation.DeformationFunction">[docs]</a><span class="k">class</span> <span class="nc">DeformationFunction</span><span class="p">(</span><span class="n">DeformationEvaluationFunction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Infinite-displacement deformation function</span>
+
+<span class="sd">    The default values are appropriate for a |C_alpha| model of a protein</span>
+<span class="sd">    with the global scaling described in the reference cited above.</span>
+
+<span class="sd">    A DeformationFunction object must be called with a single parameter,</span>
+<span class="sd">    which is a ParticleVector object containing the infinitesimal displacements</span>
+<span class="sd">    of the atoms for which the deformation is to be evaluated.</span>
+<span class="sd">    The return value is a ParticleScalar object containing the</span>
+<span class="sd">    deformation value for each atom.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the deformation function</span>
+<span class="sd">                         is defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param fc_length: the range parameter r_0 in the pair interaction term</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff used in the deformation calculation</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        :param form: the functional form (&#39;exponential&#39; or &#39;calpha&#39;)</span>
+<span class="sd">        :type form: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">DeformationEvaluationFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span><span class="p">,</span>
+                                               <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">form</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleScalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">deformation</span><span class="p">(</span><span class="n">conf</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">vector</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="p">,</span>
+                        <span class="bp">None</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">r</span>
+
+</div>
+<div class="viewcode-block" id="NormalizedDeformationFunction"><a class="viewcode-back" href="../../modules.html#MMTK.Deformation.NormalizedDeformationFunction">[docs]</a><span class="k">class</span> <span class="nc">NormalizedDeformationFunction</span><span class="p">(</span><span class="n">DeformationFunction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Normalized infinite-displacement deformation function</span>
+
+<span class="sd">    The default values are appropriate for a |C_alpha| model of a protein</span>
+<span class="sd">    with the global scaling described in the reference cited above.</span>
+<span class="sd">    The normalization is defined by equation 10 of reference 1 (see above).</span>
+<span class="sd">    </span>
+<span class="sd">    A NormalizedDeformationFunction object must be called with a single</span>
+<span class="sd">    parameter, which is a ParticleVector object containing the infinitesimal</span>
+<span class="sd">    displacements of the atoms for which the deformation is to be evaluated.</span>
+<span class="sd">    The return value is a ParticleScalar object containing the</span>
+<span class="sd">    deformation value for each atom.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the deformation function</span>
+<span class="sd">                         is defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param fc_length: the range parameter r_0 in the pair interaction term</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff used in the deformation calculation</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        :param form: the functional form (&#39;exponential&#39; or &#39;calpha&#39;)</span>
+<span class="sd">        :type form: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">DeformationFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span><span class="p">,</span>
+                                     <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">form</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">apply</span><span class="p">(</span><span class="n">DeformationFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">)</span> <span class="o">+</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span> <span class="o">=</span> <span class="mi">1</span>
+
+</div>
+<div class="viewcode-block" id="FiniteDeformationFunction"><a class="viewcode-back" href="../../modules.html#MMTK.Deformation.FiniteDeformationFunction">[docs]</a><span class="k">class</span> <span class="nc">FiniteDeformationFunction</span><span class="p">(</span><span class="n">DeformationEvaluationFunction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Finite-displacement deformation function</span>
+
+<span class="sd">    The default values are appropriate for a |C_alpha| model of a protein</span>
+<span class="sd">    with the global scaling described in the reference cited above.</span>
+
+<span class="sd">    A FiniteDeformationFunction object must be called with a single parameter,</span>
+<span class="sd">    which is a Configuration or a ParticleVector object containing the</span>
+<span class="sd">    alternate configuration of the universe for which the deformation is to be</span>
+<span class="sd">    evaluated. The return value is a ParticleScalar object containing the</span>
+<span class="sd">    deformation value for each atom.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the deformation function</span>
+<span class="sd">                         is defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param fc_length: the range parameter r_0 in the pair interaction term</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff used in the deformation calculation</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        :param form: the functional form (&#39;exponential&#39; or &#39;calpha&#39;)</span>
+<span class="sd">        :type form: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">DeformationEvaluationFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span><span class="p">,</span>
+                                               <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">form</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="n">vector</span> <span class="o">=</span> <span class="n">vector</span><span class="o">-</span><span class="n">conf</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleScalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">deformation</span><span class="p">(</span><span class="n">conf</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">vector</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">r</span>
+
+</div>
+<div class="viewcode-block" id="DeformationEnergyFunction"><a class="viewcode-back" href="../../modules.html#MMTK.Deformation.DeformationEnergyFunction">[docs]</a><span class="k">class</span> <span class="nc">DeformationEnergyFunction</span><span class="p">(</span><span class="n">DeformationEvaluationFunction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Infinite-displacement deformation energy function</span>
+
+<span class="sd">    The deformation energy is the sum of the deformation values over</span>
+<span class="sd">    all atoms of a system.</span>
+
+<span class="sd">    The default values are appropriate for a |C_alpha| model of a protein</span>
+<span class="sd">    with the global scaling described in the reference cited above.</span>
+
+<span class="sd">    A DeformationEnergyFunction is called with one or two parameters.</span>
+<span class="sd">    The first parameter is a ParticleVector object containing the</span>
+<span class="sd">    infinitesimal displacements of the atoms for which the deformation</span>
+<span class="sd">    energy is to be evaluated. The optional second argument can be</span>
+<span class="sd">    set to a non-zero value to request the gradients of the energy</span>
+<span class="sd">    in addition to the energy itself. In that case there are two</span>
+<span class="sd">    return values (energy and the gradients in a ParticleVector</span>
+<span class="sd">    object), otherwise only the energy is returned.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the deformation function</span>
+<span class="sd">                         is defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param fc_length: the range parameter r_0 in the pair interaction term</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff used in the deformation calculation</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        :param form: the functional form (&#39;exponential&#39; or &#39;calpha&#39;)</span>
+<span class="sd">        :type form: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">DeformationEvaluationFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span><span class="p">,</span>
+                                               <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">form</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">,</span> <span class="n">gradients</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">gradients</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">isParticleProperty</span><span class="p">(</span><span class="n">gradients</span><span class="p">):</span>
+                <span class="n">g</span> <span class="o">=</span> <span class="n">gradients</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gradients</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">array_type</span><span class="p">):</span>
+                <span class="n">g</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">gradients</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">gradients</span><span class="p">:</span>
+                <span class="n">g</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">g_array</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">g_array</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">deformation</span><span class="p">(</span><span class="n">conf</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">vector</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="p">,</span>
+                        <span class="n">g_array</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">l</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">l</span><span class="p">,</span> <span class="n">g</span>
+
+</div>
+<div class="viewcode-block" id="NormalizedDeformationEnergyFunction"><a class="viewcode-back" href="../../modules.html#MMTK.Deformation.NormalizedDeformationEnergyFunction">[docs]</a><span class="k">class</span> <span class="nc">NormalizedDeformationEnergyFunction</span><span class="p">(</span><span class="n">DeformationEnergyFunction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Normalized infinite-displacement deformation energy function</span>
+
+<span class="sd">    The normalized deformation energy is the sum of the normalized</span>
+<span class="sd">    deformation values over all atoms of a system.</span>
+
+<span class="sd">    The default values are appropriate for a |C_alpha| model of a protein</span>
+<span class="sd">    with the global scaling described in the reference cited above.</span>
+<span class="sd">    The normalization is defined by equation 10 of reference 1.</span>
+
+<span class="sd">    A NormalizedDeformationEnergyFunction is called with one or two parameters.</span>
+<span class="sd">    The first parameter is a ParticleVector object containing the</span>
+<span class="sd">    infinitesimal displacements of the atoms for which the deformation</span>
+<span class="sd">    energy is to be evaluated. The optional second argument can be</span>
+<span class="sd">    set to a non-zero value to request the gradients of the energy</span>
+<span class="sd">    in addition to the energy itself. In that case there are two</span>
+<span class="sd">    return values (energy and the gradients in a ParticleVector</span>
+<span class="sd">    object), otherwise only the energy is returned.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the deformation function</span>
+<span class="sd">                         is defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param fc_length: the range parameter r_0 in the pair interaction term</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff used in the deformation calculation</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        :param form: the functional form (&#39;exponential&#39; or &#39;calpha&#39;)</span>
+<span class="sd">        :type form: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">DeformationEnergyFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span><span class="p">,</span>
+                                           <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">form</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span> <span class="o">=</span> <span class="mi">1</span>
+
+</div>
+<div class="viewcode-block" id="FiniteDeformationEnergyFunction"><a class="viewcode-back" href="../../modules.html#MMTK.Deformation.FiniteDeformationEnergyFunction">[docs]</a><span class="k">class</span> <span class="nc">FiniteDeformationEnergyFunction</span><span class="p">(</span><span class="n">DeformationEvaluationFunction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Finite-displacement deformation energy function</span>
+
+<span class="sd">    The deformation energy is the sum of the</span>
+<span class="sd">    deformation values over all atoms of a system.</span>
+
+<span class="sd">    The default values are appropriate for a |C_alpha| model of a protein</span>
+<span class="sd">    with the global scaling described in the reference cited above.</span>
+
+<span class="sd">    A FiniteDeformationEnergyFunction is called with one or two parameters.</span>
+<span class="sd">    The first parameter is a ParticleVector object containing the</span>
+<span class="sd">    alternate configuration of the universe for which the deformation</span>
+<span class="sd">    energy is to be evaluated. The optional second argument can be</span>
+<span class="sd">    set to a non-zero value to request the gradients of the energy</span>
+<span class="sd">    in addition to the energy itself. In that case there are two</span>
+<span class="sd">    return values (energy and the gradients in a ParticleVector</span>
+<span class="sd">    object), otherwise only the energy is returned.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the deformation function</span>
+<span class="sd">                         is defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param fc_length: the range parameter r_0 in the pair interaction term</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff used in the deformation calculation</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        :param form: the functional form (&#39;exponential&#39; or &#39;calpha&#39;)</span>
+<span class="sd">        :type form: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">DeformationEvaluationFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span><span class="p">,</span>
+                                               <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">form</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">,</span> <span class="n">gradients</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">gradients</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">isParticleProperty</span><span class="p">(</span><span class="n">gradients</span><span class="p">):</span>
+                <span class="n">g</span> <span class="o">=</span> <span class="n">gradients</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gradients</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">array_type</span><span class="p">):</span>
+                <span class="n">g</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">gradients</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">gradients</span><span class="p">:</span>
+                <span class="n">g</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">g_array</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">g_array</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">deformation</span><span class="p">(</span><span class="n">conf</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">vector</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="p">,</span> <span class="n">g_array</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="p">,</span>
+                        <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">l</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">l</span><span class="p">,</span> <span class="n">g</span>
+
+<span class="c">#</span>
+<span class="c"># Deformation energy minimization</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="DeformationReducer"><a class="viewcode-back" href="../../modules.html#MMTK.Deformation.DeformationReducer">[docs]</a><span class="k">class</span> <span class="nc">DeformationReducer</span><span class="p">(</span><span class="n">DeformationEvaluationFunction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterative reduction of the deformation energy</span>
+
+<span class="sd">    The default values are appropriate for a |C_alpha| model of a protein</span>
+<span class="sd">    with the global scaling described in the reference cited above.</span>
+
+<span class="sd">    A DeformationReducer is called with two arguments. The first</span>
+<span class="sd">    is a ParticleVector containing the initial infinitesimal displacements</span>
+<span class="sd">    for all atoms. The second is an integer indicating the number of</span>
+<span class="sd">    iterations. The result is a modification of the displacements</span>
+<span class="sd">    by steepest-descent minimization of the deformation energy.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the deformation function</span>
+<span class="sd">                         is defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param fc_length: the range parameter r_0 in the pair interaction term</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff used in the deformation calculation</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        :param form: the functional form (&#39;exponential&#39; or &#39;calpha&#39;)</span>
+<span class="sd">        :type form: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">DeformationEvaluationFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span><span class="p">,</span>
+                                               <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">form</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">,</span> <span class="n">niter</span><span class="p">):</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="n">reduceDeformation</span><span class="p">(</span><span class="n">conf</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">vector</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="p">,</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="p">,</span> <span class="n">niter</span><span class="p">,</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="FiniteDeformationReducer"><a class="viewcode-back" href="../../modules.html#MMTK.Deformation.FiniteDeformationReducer">[docs]</a><span class="k">class</span> <span class="nc">FiniteDeformationReducer</span><span class="p">(</span><span class="n">DeformationEvaluationFunction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterative reduction of the finite-displacement deformation energy</span>
+
+<span class="sd">    The default values are appropriate for a |C_alpha| model of a protein</span>
+<span class="sd">    with the global scaling described in the reference cited above.</span>
+
+<span class="sd">    A FiniteDeformationReducer is called with two arguments. The first</span>
+<span class="sd">    is a ParticleVector or Configuration containing the alternate</span>
+<span class="sd">    configuration for which the deformation energy is evaluated.</span>
+<span class="sd">    The second is the RMS distance that defines the termination</span>
+<span class="sd">    condition. The return value a configuration that differs from</span>
+<span class="sd">    the input configuration by approximately the specified RMS distance,</span>
+<span class="sd">    and which is obtained by iterative steepest-descent minimization of</span>
+<span class="sd">    the finite-displacement deformation energy.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span>
+                 <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">,</span> <span class="n">form</span> <span class="o">=</span> <span class="s">&#39;exponential&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the deformation function</span>
+<span class="sd">                         is defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param fc_length: the range parameter r_0 in the pair interaction term</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff used in the deformation calculation</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        :param form: the functional form (&#39;exponential&#39; or &#39;calpha&#39;)</span>
+<span class="sd">        :type form: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">DeformationEvaluationFunction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">fc_length</span><span class="p">,</span>
+                                               <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">form</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">,</span> <span class="n">rms_reduction</span><span class="p">):</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="n">vector</span> <span class="o">=</span> <span class="n">vector</span><span class="o">-</span><span class="n">conf</span>
+        <span class="n">reduceFiniteDeformation</span><span class="p">(</span><span class="n">conf</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">vector</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="p">,</span>
+                                <span class="n">rms_reduction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">conf</span><span class="o">+</span><span class="n">vector</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

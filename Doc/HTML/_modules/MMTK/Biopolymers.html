@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Biopolymers &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Biopolymers</h1><div class="highlight"><pre>
+<span class="c"># This module implements the base classes for proteins and</span>
+<span class="c"># nucleic acid chains.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Base classes for proteins and nucleic acids</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Bonds</span><span class="p">,</span> <span class="n">ChemicalObjects</span><span class="p">,</span> <span class="n">Collections</span><span class="p">,</span> <span class="n">Database</span><span class="p">,</span> <span class="n">PDB</span>
+<span class="kn">import</span> <span class="nn">Scientific.IO.PDB</span>
+
+<div class="viewcode-block" id="Residue"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.Residue">[docs]</a><span class="k">class</span> <span class="nc">Residue</span><span class="p">(</span><span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Group</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for aminoacid and nucleic acid residues</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hydrogens</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># construct PDB map and alternative names</span>
+        <span class="nb">type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="s">&#39;pdbmap&#39;</span><span class="p">):</span>
+            <span class="n">pdb_dict</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="nb">type</span><span class="o">.</span><span class="n">pdbmap</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">type</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span> <span class="n">pdb_dict</span><span class="p">)]</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">g</span><span class="o">.</span><span class="n">pdbmap</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">pdb_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Database</span><span class="o">.</span><span class="n">AtomReference</span><span class="p">(</span><span class="n">atom</span><span class="o">.</span><span class="n">number</span> <span class="o">+</span> \
+                                                            <span class="n">offset</span><span class="p">)</span>
+                <span class="n">offset</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">atoms</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="s">&#39;pdb_alternative&#39;</span><span class="p">):</span>
+            <span class="n">alt_dict</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">type</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="s">&#39;pdb_alternative&#39;</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">g</span><span class="o">.</span><span class="n">pdb_alternative</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">alt_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="s">&#39;pdb_alternative&#39;</span><span class="p">,</span> <span class="n">alt_dict</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_residueThroughLinkAtom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">link_atom</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">link_atom</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="n">levels</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">link_atom</span>
+        <span class="k">while</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">obj</span> <span class="o">!=</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">parent</span>
+            <span class="n">levels</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">link_atom</span><span class="o">.</span><span class="n">bondedTo</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">atom</span><span class="o">.</span><span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">link_atom</span><span class="o">.</span><span class="n">parent</span><span class="p">:</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="n">atom</span>
+                <span class="k">while</span> <span class="n">levels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">parent</span>
+                    <span class="n">levels</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="k">return</span> <span class="n">obj</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="Residue.precedingResidue"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.Residue.precedingResidue">[docs]</a>    <span class="k">def</span> <span class="nf">precedingResidue</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns the preceding residue in the chain</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_residueThroughLinkAtom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chain_links</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="Residue.nextResidue"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.Residue.nextResidue">[docs]</a>    <span class="k">def</span> <span class="nf">nextResidue</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns the next residue in the chain</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_residueThroughLinkAtom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chain_links</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</div></div>
+<div class="viewcode-block" id="ResidueChain"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.ResidueChain">[docs]</a><span class="k">class</span> <span class="nc">ResidueChain</span><span class="p">(</span><span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Molecule</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Chain of residues</span>
+
+<span class="sd">    Base class for peptide chains and nucleotide chains</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">is_chain</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_setupChain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">circular</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">conf</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bonds</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">atoms</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bonds</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">bonds</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">link1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">chain_links</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">link2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">chain_links</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bonds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bonds</span><span class="o">.</span><span class="n">Bond</span><span class="p">((</span><span class="n">link1</span><span class="p">,</span> <span class="n">link2</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">circular</span><span class="p">:</span>
+            <span class="n">link1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">chain_links</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">link2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">chain_links</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bonds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bonds</span><span class="o">.</span><span class="n">Bond</span><span class="p">((</span><span class="n">link1</span><span class="p">,</span> <span class="n">link2</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bonds</span> <span class="o">=</span> <span class="n">Bonds</span><span class="o">.</span><span class="n">BondList</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bonds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">configurations</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">properties</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">properties</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">conf</span><span class="p">:</span>
+            <span class="n">conf</span><span class="o">.</span><span class="n">applyTo</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">translateTo</span><span class="p">(</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">])</span>
+            <span class="k">del</span> <span class="n">properties</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addProperties</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">replaceResidue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">item</span><span class="p">],</span> <span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ResidueChain.residuesOfType"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.ResidueChain.residuesOfType">[docs]</a>    <span class="k">def</span> <span class="nf">residuesOfType</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">types</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param types: residue type codes</span>
+<span class="sd">        :type types: str</span>
+<span class="sd">        :returns: a collection that contains all residues whose type</span>
+<span class="sd">                  (residue code) is contained in types</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">types</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">types</span><span class="p">]</span>
+        <span class="n">rlist</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">symbol</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">types</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">Collections</span><span class="o">.</span><span class="n">Collection</span><span class="p">(</span><span class="n">rlist</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ResidueChain.residues"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.ResidueChain.residues">[docs]</a>    <span class="k">def</span> <span class="nf">residues</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a collection containing all residues</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Collections</span><span class="o">.</span><span class="n">Collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ResidueChain.sequence"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.ResidueChain.sequence">[docs]</a>    <span class="k">def</span> <span class="nf">sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the residue sequence as a list of residue codes</span>
+<span class="sd">        :rtype: list of str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">symbol</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">]</span>
+
+<span class="c">#</span>
+<span class="c"># Find the full name of a residue</span>
+<span class="c">#</span></div></div>
+<span class="k">def</span> <span class="nf">_fullName</span><span class="p">(</span><span class="n">residue</span><span class="p">):</span>
+    <span class="n">residue</span> <span class="o">=</span> <span class="n">residue</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_aa_residue_names</span><span class="p">[</span><span class="n">residue</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_na_residue_names</span><span class="p">[</span><span class="n">residue</span><span class="p">]</span>
+
+<span class="n">_aa_residue_names</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;ala&#39;</span><span class="p">:</span> <span class="s">&#39;alanine&#39;</span><span class="p">,</span>          <span class="s">&#39;a&#39;</span><span class="p">:</span> <span class="s">&#39;alanine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;arg&#39;</span><span class="p">:</span> <span class="s">&#39;arginine&#39;</span><span class="p">,</span>         <span class="s">&#39;r&#39;</span><span class="p">:</span> <span class="s">&#39;arginine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;asn&#39;</span><span class="p">:</span> <span class="s">&#39;asparagine&#39;</span><span class="p">,</span>       <span class="s">&#39;n&#39;</span><span class="p">:</span> <span class="s">&#39;asparagine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;asp&#39;</span><span class="p">:</span> <span class="s">&#39;aspartic_acid&#39;</span><span class="p">,</span>    <span class="s">&#39;d&#39;</span><span class="p">:</span> <span class="s">&#39;aspartic_acid&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;cys&#39;</span><span class="p">:</span> <span class="s">&#39;cysteine&#39;</span><span class="p">,</span>         <span class="s">&#39;c&#39;</span><span class="p">:</span> <span class="s">&#39;cysteine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;gln&#39;</span><span class="p">:</span> <span class="s">&#39;glutamine&#39;</span><span class="p">,</span>        <span class="s">&#39;q&#39;</span><span class="p">:</span> <span class="s">&#39;glutamine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;glu&#39;</span><span class="p">:</span> <span class="s">&#39;glutamic_acid&#39;</span><span class="p">,</span>    <span class="s">&#39;e&#39;</span><span class="p">:</span> <span class="s">&#39;glutamic_acid&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;gly&#39;</span><span class="p">:</span> <span class="s">&#39;glycine&#39;</span><span class="p">,</span>          <span class="s">&#39;g&#39;</span><span class="p">:</span> <span class="s">&#39;glycine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;his&#39;</span><span class="p">:</span> <span class="s">&#39;histidine&#39;</span><span class="p">,</span>        <span class="s">&#39;h&#39;</span><span class="p">:</span> <span class="s">&#39;histidine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ile&#39;</span><span class="p">:</span> <span class="s">&#39;isoleucine&#39;</span><span class="p">,</span>       <span class="s">&#39;i&#39;</span><span class="p">:</span> <span class="s">&#39;isoleucine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;leu&#39;</span><span class="p">:</span> <span class="s">&#39;leucine&#39;</span><span class="p">,</span>          <span class="s">&#39;l&#39;</span><span class="p">:</span> <span class="s">&#39;leucine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;lys&#39;</span><span class="p">:</span> <span class="s">&#39;lysine&#39;</span><span class="p">,</span>           <span class="s">&#39;k&#39;</span><span class="p">:</span> <span class="s">&#39;lysine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;met&#39;</span><span class="p">:</span> <span class="s">&#39;methionine&#39;</span><span class="p">,</span>       <span class="s">&#39;m&#39;</span><span class="p">:</span> <span class="s">&#39;methionine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;phe&#39;</span><span class="p">:</span> <span class="s">&#39;phenylalanine&#39;</span><span class="p">,</span>    <span class="s">&#39;f&#39;</span><span class="p">:</span> <span class="s">&#39;phenylalanine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;pro&#39;</span><span class="p">:</span> <span class="s">&#39;proline&#39;</span><span class="p">,</span>          <span class="s">&#39;p&#39;</span><span class="p">:</span> <span class="s">&#39;proline&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ser&#39;</span><span class="p">:</span> <span class="s">&#39;serine&#39;</span><span class="p">,</span>           <span class="s">&#39;s&#39;</span><span class="p">:</span> <span class="s">&#39;serine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;thr&#39;</span><span class="p">:</span> <span class="s">&#39;threonine&#39;</span><span class="p">,</span>        <span class="s">&#39;t&#39;</span><span class="p">:</span> <span class="s">&#39;threonine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;trp&#39;</span><span class="p">:</span> <span class="s">&#39;tryptophan&#39;</span><span class="p">,</span>       <span class="s">&#39;w&#39;</span><span class="p">:</span> <span class="s">&#39;tryptophan&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;tyr&#39;</span><span class="p">:</span> <span class="s">&#39;tyrosine&#39;</span><span class="p">,</span>         <span class="s">&#39;y&#39;</span><span class="p">:</span> <span class="s">&#39;tyrosine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;val&#39;</span><span class="p">:</span> <span class="s">&#39;valine&#39;</span><span class="p">,</span>           <span class="s">&#39;v&#39;</span><span class="p">:</span> <span class="s">&#39;valine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;cyx&#39;</span><span class="p">:</span> <span class="s">&#39;cystine_ss&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;cym&#39;</span><span class="p">:</span> <span class="s">&#39;cysteine_with_negative_charge&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;app&#39;</span><span class="p">:</span> <span class="s">&#39;aspartic_acid_neutral&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;glp&#39;</span><span class="p">:</span> <span class="s">&#39;glutamic_acid_neutral&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;hsd&#39;</span><span class="p">:</span> <span class="s">&#39;histidine_deltah&#39;</span><span class="p">,</span> <span class="s">&#39;hse&#39;</span><span class="p">:</span> <span class="s">&#39;histidine_epsilonh&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;hsp&#39;</span><span class="p">:</span> <span class="s">&#39;histidine_plus&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;hid&#39;</span><span class="p">:</span> <span class="s">&#39;histidine_deltah&#39;</span><span class="p">,</span> <span class="s">&#39;hie&#39;</span><span class="p">:</span> <span class="s">&#39;histidine_epsilonh&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;hip&#39;</span><span class="p">:</span> <span class="s">&#39;histidine_plus&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;lyp&#39;</span><span class="p">:</span> <span class="s">&#39;lysine_neutral&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ace&#39;</span><span class="p">:</span> <span class="s">&#39;ace_beginning&#39;</span><span class="p">,</span>    <span class="s">&#39;nme&#39;</span><span class="p">:</span> <span class="s">&#39;nmethyl&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;nhe&#39;</span><span class="p">:</span> <span class="s">&#39;amide&#39;</span><span class="p">,</span>
+                     <span class="p">}</span>
+
+<span class="n">_na_residue_names</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;da&#39;</span><span class="p">:</span> <span class="s">&#39;d-adenosine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;da5&#39;</span><span class="p">:</span> <span class="s">&#39;d-adenosine_5ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;da3&#39;</span><span class="p">:</span> <span class="s">&#39;d-adenosine_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dan&#39;</span><span class="p">:</span> <span class="s">&#39;d-adenosine_5ter_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dc&#39;</span><span class="p">:</span> <span class="s">&#39;d-cytosine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dc5&#39;</span><span class="p">:</span> <span class="s">&#39;d-cytosine_5ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dc3&#39;</span><span class="p">:</span> <span class="s">&#39;d-cytosine_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dcn&#39;</span><span class="p">:</span> <span class="s">&#39;d-cytosine_5ter_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dg&#39;</span><span class="p">:</span> <span class="s">&#39;d-guanosine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dg5&#39;</span><span class="p">:</span> <span class="s">&#39;d-guanosine_5ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dg3&#39;</span><span class="p">:</span> <span class="s">&#39;d-guanosine_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dgn&#39;</span><span class="p">:</span> <span class="s">&#39;d-guanosine_5ter_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dt&#39;</span><span class="p">:</span> <span class="s">&#39;d-thymine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dt5&#39;</span><span class="p">:</span> <span class="s">&#39;d-thymine_5ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dt3&#39;</span><span class="p">:</span> <span class="s">&#39;d-thymine_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;dtn&#39;</span><span class="p">:</span> <span class="s">&#39;d-thymine_5ter_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ra&#39;</span><span class="p">:</span> <span class="s">&#39;r-adenosine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ra5&#39;</span><span class="p">:</span> <span class="s">&#39;r-adenosine_5ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ra3&#39;</span><span class="p">:</span> <span class="s">&#39;r-adenosine_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ran&#39;</span><span class="p">:</span> <span class="s">&#39;r-adenosine_5ter_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;rc&#39;</span><span class="p">:</span> <span class="s">&#39;r-cytosine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;rc5&#39;</span><span class="p">:</span> <span class="s">&#39;r-cytosine_5ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;rc3&#39;</span><span class="p">:</span> <span class="s">&#39;r-cytosine_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;rcn&#39;</span><span class="p">:</span> <span class="s">&#39;r-cytosine_5ter_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;rg&#39;</span><span class="p">:</span> <span class="s">&#39;r-guanosine&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;rg5&#39;</span><span class="p">:</span> <span class="s">&#39;r-guanosine_5ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;rg3&#39;</span><span class="p">:</span> <span class="s">&#39;r-guanosine_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;rgn&#39;</span><span class="p">:</span> <span class="s">&#39;r-guanosine_5ter_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ru&#39;</span><span class="p">:</span> <span class="s">&#39;r-uracil&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ru5&#39;</span><span class="p">:</span> <span class="s">&#39;r-uracil_5ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;ru3&#39;</span><span class="p">:</span> <span class="s">&#39;r-uracil_3ter&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;run&#39;</span><span class="p">:</span> <span class="s">&#39;r-uracil_5ter_3ter&#39;</span><span class="p">,</span>
+                     <span class="p">}</span>
+
+<span class="k">for</span> <span class="n">code</span> <span class="ow">in</span> <span class="n">_aa_residue_names</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">code</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">defineAminoAcidResidue</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">code</span> <span class="ow">in</span> <span class="n">_na_residue_names</span><span class="p">:</span>
+    <span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">defineNucleicAcidResidue</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Add a residue to the residue list</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="defineAminoAcidResidue"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.defineAminoAcidResidue">[docs]</a><span class="k">def</span> <span class="nf">defineAminoAcidResidue</span><span class="p">(</span><span class="n">full_name</span><span class="p">,</span> <span class="n">code3</span><span class="p">,</span> <span class="n">code1</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add a non-standard amino acid residue to the internal residue table.</span>
+<span class="sd">    Once added to the residue table, the new residue can be used</span>
+<span class="sd">    like any of the standard residues in the creation of peptide chains.</span>
+
+<span class="sd">    :param full_name: the name of the group definition in the chemical database</span>
+<span class="sd">    :type full_name: str</span>
+<span class="sd">    :param code3: the three-letter residue code</span>
+<span class="sd">    :type code3: str</span>
+<span class="sd">    :param code1: an optionel one-letter residue code</span>
+<span class="sd">    :type code1: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">code3</span> <span class="o">=</span> <span class="n">code3</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">code1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">code1</span> <span class="o">=</span> <span class="n">code1</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">_aa_residue_names</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">code3</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_na_residue_names</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">code3</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;residue name &quot;</span> <span class="o">+</span> <span class="n">code3</span> <span class="o">+</span> <span class="s">&quot; already used&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">_aa_residue_names</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">code1</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;residue name &quot;</span> <span class="o">+</span> <span class="n">code1</span> <span class="o">+</span> <span class="s">&quot; already used&quot;</span><span class="p">)</span>
+    <span class="n">_aa_residue_names</span><span class="p">[</span><span class="n">code3</span><span class="p">]</span> <span class="o">=</span> <span class="n">full_name</span>
+    <span class="k">if</span> <span class="n">code1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">_aa_residue_names</span><span class="p">[</span><span class="n">code1</span><span class="p">]</span> <span class="o">=</span> <span class="n">full_name</span>
+    <span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">defineAminoAcidResidue</span><span class="p">(</span><span class="n">code3</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="defineNucleicAcidResidue"><a class="viewcode-back" href="../../modules.html#MMTK.Biopolymers.defineNucleicAcidResidue">[docs]</a><span class="k">def</span> <span class="nf">defineNucleicAcidResidue</span><span class="p">(</span><span class="n">full_name</span><span class="p">,</span> <span class="n">code</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add a non-standard nucleic acid residue to the internal residue table.</span>
+<span class="sd">    Once added to the residue table, the new residue can be used</span>
+<span class="sd">    like any of the standard residues in the creation of nucleotide chains.</span>
+
+<span class="sd">    :param full_name: the name of the group definition in the chemical database</span>
+<span class="sd">    :type full_name: str</span>
+<span class="sd">    :param code: the residue code</span>
+<span class="sd">    :type code3: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">code</span> <span class="o">=</span> <span class="n">code</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">_aa_residue_names</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">code</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_na_residue_names</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">code</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;residue name &quot;</span> <span class="o">+</span> <span class="n">code</span> <span class="o">+</span> <span class="s">&quot; already used&quot;</span><span class="p">)</span>
+    <span class="n">_na_residue_names</span><span class="p">[</span><span class="n">code</span><span class="p">]</span> <span class="o">=</span> <span class="n">full_name</span>
+    <span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">defineNucleicAcidResidue</span><span class="p">(</span><span class="n">code</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

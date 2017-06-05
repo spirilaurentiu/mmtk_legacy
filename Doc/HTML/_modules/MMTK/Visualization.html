@@ -1,0 +1,661 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Visualization &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Visualization</h1><div class="highlight"><pre>
+<span class="c"># This module contains interfaces to external visualization programs</span>
+<span class="c"># and a visualization base class</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Visualization of chemical objects, including animation</span>
+
+<span class="sd">This module provides visualization of chemical objects and animated</span>
+<span class="sd">visualization of normal modes and sequences of configurations, including</span>
+<span class="sd">trajectories. Visualization depends on external visualization programs.</span>
+<span class="sd">On Unix systems, these programs are defined by environment variables.</span>
+<span class="sd">Under Windows NT, the system definitions for files with extension</span>
+<span class="sd">&quot;pdb&quot; and &quot;wrl&quot; are used.</span>
+
+<span class="sd">A viewer for PDB files can be defined by the environment variable</span>
+<span class="sd">&#39;PDBVIEWER&#39;. For showing a PDB file, MMTK will execute a command</span>
+<span class="sd">consisting of the value of this variable followed by a space</span>
+<span class="sd">and the name of the PDB file.</span>
+
+<span class="sd">A viewer for VRML files can be defined by the environment variable</span>
+<span class="sd">&#39;VRMLVIEWER&#39;. For showing a VRML file, MMTK will execute a command</span>
+<span class="sd">consisting of the value of this variable followed by a space</span>
+<span class="sd">and the name of the VRML file.</span>
+
+<span class="sd">Since there is no standard for launching viewers for animation,</span>
+<span class="sd">MMTK supports only two programs: VMD and XMol. MMTK detects</span>
+<span class="sd">these programs by inspecting the value of the environment variable</span>
+<span class="sd">&#39;PDBVIEWER&#39;. This value must be the file name of the executable,</span>
+<span class="sd">and must give &quot;vmd&quot; or &quot;xmol&quot; after stripping off an optional</span>
+<span class="sd">directory specification.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Units</span><span class="p">,</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+<span class="kn">import</span> <span class="nn">subprocess</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">tempfile</span><span class="o">,</span> <span class="nn">os</span>
+
+<span class="c">#</span>
+<span class="c"># If you want temporary files in a non-standard directory, make</span>
+<span class="c"># its name the value of this variable:</span>
+<span class="c">#</span>
+<span class="n">tempdir</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="c">#</span>
+<span class="c"># Identify OS</span>
+<span class="c">#</span>
+<span class="n">running_on_windows</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s">&#39;win32&#39;</span>
+<span class="n">running_on_macosx</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;darwin&#39;</span><span class="p">)</span>
+<span class="n">running_on_linux</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;linux&#39;</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Get visualization program names</span>
+<span class="c">#</span>
+<span class="n">viewer</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">pdbviewer</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">&#39;PDBVIEWER&#39;</span><span class="p">]</span>
+    <span class="n">prog</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">pdbviewer</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">viewer</span><span class="p">[</span><span class="s">&#39;pdb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">prog</span><span class="p">,</span> <span class="n">pdbviewer</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="k">pass</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">vrmlviewer</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">&#39;VRMLVIEWER&#39;</span><span class="p">]</span>
+    <span class="n">prog</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">vrmlviewer</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">viewer</span><span class="p">[</span><span class="s">&#39;vrml&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">prog</span><span class="p">,</span> <span class="n">vrmlviewer</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="k">pass</span>
+
+
+<div class="viewcode-block" id="definePDBViewer"><a class="viewcode-back" href="../../modules.html#MMTK.Visualization.definePDBViewer">[docs]</a><span class="k">def</span> <span class="nf">definePDBViewer</span><span class="p">(</span><span class="n">progname</span><span class="p">,</span> <span class="n">exec_path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Define the program used to view PDB files.</span>
+
+<span class="sd">    :param progname: the canonical name of the PDB viewer. If it is</span>
+<span class="sd">                     a known one (one of &quot;vmd&quot;, &quot;xmol&quot;, &quot;imol&quot;),</span>
+<span class="sd">                     special features such as animation may be</span>
+<span class="sd">                     available.</span>
+<span class="sd">    :type progname: str</span>
+<span class="sd">    :param exec_path: the path to the executable program</span>
+<span class="sd">    :type exec_path: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">viewer</span><span class="p">[</span><span class="s">&#39;pdb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">progname</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">exec_path</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="defineVRMLiewer"><a class="viewcode-back" href="../../modules.html#MMTK.Visualization.defineVRMLiewer">[docs]</a><span class="k">def</span> <span class="nf">defineVRMLiewer</span><span class="p">(</span><span class="n">progname</span><span class="p">,</span> <span class="n">exec_path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Define the program used to view VRML files.</span>
+
+<span class="sd">    :param progname: the canonical name of the VRML viewer</span>
+<span class="sd">    :type progname: str</span>
+<span class="sd">    :param exec_path: the path to the executable program</span>
+<span class="sd">    :type exec_path: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">viewer</span><span class="p">[</span><span class="s">&#39;vrml&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">progname</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">exec_path</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Visualization base class. Defines methods for general visualization</span>
+<span class="c"># tasks.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="Viewable"><a class="viewcode-back" href="../../modules.html#MMTK.Visualization.Viewable">[docs]</a><span class="k">class</span> <span class="nc">Viewable</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Any viewable chemical object</span>
+
+<span class="sd">    This is a mix-in class that defines a general</span>
+<span class="sd">    visualization method for all viewable objects, i.e. chemical</span>
+<span class="sd">    objects (atoms, molecules, etc.), collections, and universes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Viewable.graphicsObjects"><a class="viewcode-back" href="../../modules.html#MMTK.Visualization.Viewable.graphicsObjects">[docs]</a>    <span class="k">def</span> <span class="nf">graphicsObjects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :keyword configuration: the configuration in which the objects</span>
+<span class="sd">                                are drawn (default: the current configuration)</span>
+<span class="sd">        :type configuration: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :keyword model: the graphical representation to be used (one of</span>
+<span class="sd">                        &quot;wireframe&quot;, &quot;tube&quot;, &quot;ball_and_stick&quot;, &quot;vdw&quot; and</span>
+<span class="sd">                        &quot;vdw_and_stick&quot;).  The vdw models use balls</span>
+<span class="sd">                        with the radii taken from the atom objects.</span>
+<span class="sd">                        Default is &quot;wireframe&quot;.</span>
+<span class="sd">        :type model: str</span>
+<span class="sd">        :keyword ball_radius: the radius of the balls representing the atoms</span>
+<span class="sd">                              in a ball_and_stick model, default: 0.03</span>
+<span class="sd">                              This is also used in vdw and vdw_and_stick when</span>
+<span class="sd">                              an atom does not supply a radius.</span>
+<span class="sd">        :type ball_radius: float</span>
+<span class="sd">        :keyword stick_radius: the radius of the sticks representing the bonds</span>
+<span class="sd">                               in a ball_and_stick, vdw_and_stick or tube model.</span>
+<span class="sd">                               Default: 0.02 for the tube model, 0.01 for the</span>
+<span class="sd">                               ball_and_stick and vdw_and_stick models</span>
+<span class="sd">        :type stick_radius: float</span>
+<span class="sd">        :keyword graphics_module: the module in which the elementary graphics</span>
+<span class="sd">                                  objects are defined</span>
+<span class="sd">                                  (default: Scientific.Visualization.VRML)</span>
+<span class="sd">        :type graphics_module: module</span>
+<span class="sd">        :keyword color_values:  a color value for each atom which defines</span>
+<span class="sd">                                the color via the color scale object specified</span>
+<span class="sd">                                by the option color_scale. If no value is</span>
+<span class="sd">                                given, the atoms&#39; colors are taken from the</span>
+<span class="sd">                                attribute &#39;color&#39; of each atom object (default</span>
+<span class="sd">                                values for each chemical element are provided</span>
+<span class="sd">                                in the chemical database).</span>
+<span class="sd">        :type  color_values: :class:`~MMTK.ParticleProperties.ParticleScalar`</span>
+<span class="sd">        :keyword color_scale: an object that returns a color object (as defined</span>
+<span class="sd">                              in the module Scientific.Visualization.Color)</span>
+<span class="sd">                              when called with a number argument. Suitable</span>
+<span class="sd">                              objects are defined by</span>
+<span class="sd">                              Scientific.Visualization.Color.ColorScale and</span>
+<span class="sd">                              Scientific.Visualization.Color.SymmetricColorScale.</span>
+<span class="sd">                              The object is used only when the option</span>
+<span class="sd">                              color_values is specified as well. The default</span>
+<span class="sd">                              is a blue-to-red color scale that covers the</span>
+<span class="sd">                              range of the values given in color_values.</span>
+<span class="sd">        :type color_scale: callable</span>
+<span class="sd">        :keyword color: a color name predefined in the module</span>
+<span class="sd">                        Scientific.Visualization.Color. The corresponding</span>
+<span class="sd">                        color is applied to all graphics objects that are</span>
+<span class="sd">                        returned.</span>
+<span class="sd">        :returns: a list of graphics objects that represent</span>
+<span class="sd">                  the object for which the method is called.</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;configuration&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;model&#39;</span><span class="p">,</span> <span class="s">&#39;wireframe&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="o">==</span> <span class="s">&#39;tube&#39;</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="s">&#39;ball_and_stick&#39;</span>
+            <span class="n">radius</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;stick_radius&#39;</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span>
+            <span class="n">options</span><span class="p">[</span><span class="s">&#39;stick_radius&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">radius</span>
+            <span class="n">options</span><span class="p">[</span><span class="s">&#39;ball_radius&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">radius</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">module</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s">&#39;graphics_module&#39;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">Scientific.Visualization</span> <span class="kn">import</span> <span class="n">VRML</span>
+            <span class="n">module</span> <span class="o">=</span> <span class="n">VRML</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;color&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">color</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">color_values</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;color_values&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">color_values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">lower</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">color_values</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+                <span class="n">upper</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">color_values</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+                <span class="n">options</span><span class="p">[</span><span class="s">&#39;color_scale&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">ColorScale</span><span class="p">((</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">distance_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span><span class="o">.</span><span class="n">distanceVector</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Universe</span>
+            <span class="n">distance_fn</span> <span class="o">=</span> <span class="n">Universe</span><span class="o">.</span><span class="n">InfiniteUniverse</span><span class="p">()</span><span class="o">.</span><span class="n">distanceVector</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_graphics</span><span class="p">(</span><span class="n">conf</span><span class="p">,</span> <span class="n">distance_fn</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_atomColor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;color&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">color</span>
+        <span class="n">color_values</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;color_values&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">color_values</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">atom</span><span class="o">.</span><span class="n">color</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s">&#39;color_scale&#39;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">scale</span><span class="p">(</span><span class="n">color_values</span><span class="p">[</span><span class="n">atom</span><span class="p">])</span>
+
+
+<span class="c">#</span>
+<span class="c"># View anything viewable.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="view"><a class="viewcode-back" href="../../modules.html#MMTK.Visualization.view">[docs]</a><span class="k">def</span> <span class="nf">view</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="o">*</span><span class="n">parameters</span><span class="p">):</span>
+    <span class="s">&quot;Equivalent to object.view(parameters).&quot;</span>
+    <span class="nb">object</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">*</span><span class="n">parameters</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Display an object or a collection of objects using an external</span>
+<span class="c"># viewing program.</span>
+<span class="c">#</span></div>
+<span class="k">def</span> <span class="nf">genericViewConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">configuration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">format</span> <span class="o">=</span> <span class="s">&#39;pdb&#39;</span><span class="p">,</span>
+                             <span class="n">label</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="n">format</span> <span class="o">=</span> <span class="n">format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">viewer_format</span> <span class="o">=</span> <span class="n">format</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempdir</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">if</span> <span class="n">viewer_format</span> <span class="o">==</span> <span class="s">&#39;pdb&#39;</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span> <span class="o">+</span> <span class="s">&#39;.pdb&#39;</span>
+    <span class="k">elif</span> <span class="n">viewer_format</span> <span class="o">==</span> <span class="s">&#39;vrml&#39;</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span> <span class="o">+</span> <span class="s">&#39;.wrl&#39;</span>
+    
+    <span class="k">if</span> <span class="n">running_on_windows</span><span class="p">:</span>
+        <span class="nb">object</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">startfile</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">win32api</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="n">error_number</span><span class="p">:</span>
+            <span class="c">#Looking for error 31, SE_ERR_NOASSOC, in particular</span>
+            <span class="n">file_type</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">error_number</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">31</span><span class="p">:</span>
+                <span class="k">print</span> <span class="p">(</span><span class="s">&#39;There is no program associated with .</span><span class="si">%s</span><span class="s"> files,&#39;</span> <span class="o">+</span> \
+                       <span class="s">&#39; please install a suitable viewer&#39;</span><span class="p">)</span> <span class="o">%</span> <span class="n">file_type</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s">&#39;Unexpected error attempting to open .</span><span class="si">%s</span><span class="s"> file&#39;</span> <span class="o">%</span> <span class="n">file_type</span>
+                <span class="k">print</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_value</span>
+    <span class="k">elif</span> <span class="n">viewer</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">viewer_format</span><span class="p">):</span>
+        <span class="c"># On Unix-like systems, give priority to a  user-specified viewer.</span>
+        <span class="nb">object</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">fork</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">pipe</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">viewer</span><span class="p">[</span><span class="n">format</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="n">filename</span> <span class="o">+</span> \
+                            <span class="s">&#39; 1&gt; /dev/null 2&gt;&amp;1&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+            <span class="n">pipe</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">_exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">running_on_macosx</span><span class="p">:</span>
+        <span class="nb">object</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s">&quot;/usr/bin/open&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">running_on_linux</span><span class="p">:</span>
+        <span class="nb">object</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s">&quot;xdg-open&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">Utility</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&#39;No viewer for </span><span class="si">%s</span><span class="s"> defined.&#39;</span> <span class="o">%</span> <span class="n">viewer_format</span><span class="p">)</span>
+        <span class="k">return</span>
+
+<span class="k">def</span> <span class="nf">viewConfiguration</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">pdbviewer</span><span class="p">,</span> <span class="n">exec_path</span> <span class="o">=</span> <span class="n">viewer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;pdb&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+    <span class="n">function</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;vmd&#39;</span><span class="p">:</span> <span class="n">viewConfigurationVMD</span><span class="p">,</span>
+                <span class="s">&#39;xmol&#39;</span><span class="p">:</span> <span class="n">viewConfigurationXMol</span><span class="p">,</span>
+                <span class="s">&#39;imol&#39;</span><span class="p">:</span> <span class="n">viewConfigurationIMol</span><span class="p">}</span> \
+               <span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pdbviewer</span><span class="p">,</span><span class="n">genericViewConfiguration</span><span class="p">)</span>
+    <span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Normal mode and trajectory animation</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">viewSequence</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">conf_list</span><span class="p">,</span> <span class="n">periodic</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Launches an animation using an external viewer.</span>
+
+<span class="sd">    :param object: the object for which the animation is displayed.</span>
+<span class="sd">    :type object: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">    :param conf_list: a sequence of configurations that define the animation</span>
+<span class="sd">    :type conf_list: sequence</span>
+<span class="sd">    :param periodic: if True, turn animation into a loop</span>
+<span class="sd">    :param label: an optional text string that some interfaces</span>
+<span class="sd">                  use to pass a description of the object to the</span>
+<span class="sd">                  visualization system.</span>
+<span class="sd">    :type label: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pdbviewer</span><span class="p">,</span> <span class="n">exec_path</span> <span class="o">=</span> <span class="n">viewer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;pdb&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+    <span class="n">function</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;vmd&#39;</span><span class="p">:</span> <span class="n">viewSequenceVMD</span><span class="p">,</span>
+                <span class="s">&#39;xmol&#39;</span><span class="p">:</span> <span class="n">viewSequenceXMol</span><span class="p">,</span>
+                <span class="s">&#39;imol&#39;</span><span class="p">:</span> <span class="n">viewSequenceIMol</span><span class="p">,</span>
+                <span class="bp">None</span><span class="p">:</span> <span class="bp">None</span><span class="p">}[</span><span class="n">pdbviewer</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">function</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">Utility</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&#39;No viewer with animation feature defined.&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">function</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">conf_list</span><span class="p">,</span> <span class="n">periodic</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="viewTrajectory"><a class="viewcode-back" href="../../modules.html#MMTK.Visualization.viewTrajectory">[docs]</a><span class="k">def</span> <span class="nf">viewTrajectory</span><span class="p">(</span><span class="n">trajectory</span><span class="p">,</span> <span class="n">first</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">subset</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span>
+                   <span class="n">label</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Launches an animation based on a trajectory using an external viewer.</span>
+
+<span class="sd">    :param trajectory: the trajectory</span>
+<span class="sd">    :type trajectory: :class:`~MMTK.Trajectory.Trajectory`</span>
+<span class="sd">    :param first: the first trajectory step to be used</span>
+<span class="sd">    :type first: int</span>
+<span class="sd">    :param last: the first trajectory step NOT to be used</span>
+<span class="sd">    :type last: int</span>
+<span class="sd">    :param skip: the distance between two consecutive steps shown</span>
+<span class="sd">    :type skip: int</span>
+<span class="sd">    :param subset: the subset of the universe that is shown</span>
+<span class="sd">                   (default: the whole universe)</span>
+<span class="sd">    :type subset: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">    :param label: an optional text string that some interfaces</span>
+<span class="sd">                  use to pass a description of the object to the</span>
+<span class="sd">                  visualization system.</span>
+<span class="sd">    :type label: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">trajectory</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">MMTK.Trajectory</span> <span class="kn">import</span> <span class="n">Trajectory</span>
+        <span class="n">trajectory</span> <span class="o">=</span> <span class="n">Trajectory</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">trajectory</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">last</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">trajectory</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">last</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">trajectory</span><span class="p">)</span> <span class="o">+</span> <span class="n">last</span>
+    <span class="n">universe</span> <span class="o">=</span> <span class="n">trajectory</span><span class="o">.</span><span class="n">universe</span>
+    <span class="k">if</span> <span class="n">subset</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">subset</span> <span class="o">=</span> <span class="n">universe</span>
+    <span class="n">viewSequence</span><span class="p">(</span><span class="n">subset</span><span class="p">,</span> <span class="n">trajectory</span><span class="o">.</span><span class="n">configuration</span><span class="p">[</span><span class="n">first</span><span class="p">:</span><span class="n">last</span><span class="p">:</span><span class="n">skip</span><span class="p">],</span> <span class="n">label</span><span class="p">)</span>
+</div>
+<span class="k">def</span> <span class="nf">viewMode</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">universe</span> <span class="o">=</span> <span class="n">mode</span><span class="o">.</span><span class="n">universe</span>
+    <span class="k">if</span> <span class="n">subset</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">subset</span> <span class="o">=</span> <span class="n">universe</span>
+    <span class="n">conf</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+    <span class="n">viewSequence</span><span class="p">(</span><span class="n">subset</span><span class="p">,</span> <span class="p">[</span><span class="n">conf</span><span class="p">,</span> <span class="n">conf</span><span class="o">+</span><span class="n">factor</span><span class="o">*</span><span class="n">mode</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">conf</span><span class="o">-</span><span class="n">factor</span><span class="o">*</span><span class="n">mode</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span>
+                 <span class="n">label</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># XMol support</span>
+<span class="c">#    </span>
+
+<span class="c">#</span>
+<span class="c"># Animation with XMol.</span>
+<span class="c">#</span>
+<span class="n">viewConfigurationXMol</span> <span class="o">=</span> <span class="n">viewConfiguration</span>
+
+<span class="k">def</span> <span class="nf">viewSequenceXMol</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">conf_list</span><span class="p">,</span> <span class="n">periodic</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempdir</span>
+    <span class="n">file_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">conf_list</span><span class="p">:</span>
+        <span class="nb">file</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+        <span class="n">file_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">file</span><span class="p">)</span>
+        <span class="nb">object</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="nb">file</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="s">&#39;pdb&#39;</span><span class="p">)</span>
+    <span class="n">bigfile</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s">&#39;cat&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">file_list</span> <span class="o">+</span> <span class="p">[</span><span class="s">&#39;&gt;&#39;</span><span class="p">,</span> <span class="n">bigfile</span><span class="p">])</span>
+    <span class="k">for</span> <span class="nb">file</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="nb">file</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">fork</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">pipe</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="s">&#39;xmol -readFormat pdb &#39;</span> <span class="o">+</span> <span class="n">bigfile</span> <span class="o">+</span> \
+                        <span class="s">&#39; 1&gt; /dev/null 2&gt;&amp;1&#39;</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+        <span class="n">pipe</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">bigfile</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">_exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="c">#</span>
+<span class="c"># VMD support</span>
+<span class="c">#</span>
+
+<span class="c">#</span>
+<span class="c"># View configuration</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">isCalpha</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">MMTK.Proteins</span> <span class="kn">import</span> <span class="n">isProtein</span><span class="p">,</span> <span class="n">isPeptideChain</span>
+    <span class="kn">from</span> <span class="nn">MMTK.Universe</span> <span class="kn">import</span> <span class="n">isUniverse</span>
+    <span class="kn">from</span> <span class="nn">MMTK.Collections</span> <span class="kn">import</span> <span class="n">isCollection</span>
+    <span class="k">if</span> <span class="n">isProtein</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+       <span class="n">chain_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">isPeptideChain</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="n">chain_list</span> <span class="o">=</span> <span class="p">[</span><span class="nb">object</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">isUniverse</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span> <span class="ow">or</span> <span class="n">isCollection</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="n">chain_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="nb">object</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">isProtein</span><span class="p">(</span><span class="n">element</span><span class="p">):</span>
+                <span class="n">chain_list</span> <span class="o">=</span> <span class="n">chain_list</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">isPeptideChain</span><span class="p">(</span><span class="n">element</span><span class="p">):</span>
+                <span class="n">chain_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="n">chain_list</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">chain</span><span class="o">.</span><span class="n">model</span> <span class="o">!=</span> <span class="s">&#39;calpha&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">return</span> <span class="bp">True</span>
+
+<span class="k">def</span> <span class="nf">viewConfigurationVMD</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">configuration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">format</span> <span class="o">=</span> <span class="s">&#39;pdb&#39;</span><span class="p">,</span>
+                      <span class="n">label</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Universe</span>
+    <span class="n">format</span> <span class="o">=</span> <span class="n">format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">format</span> <span class="o">!=</span> <span class="s">&#39;pdb&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">genericViewConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempdir</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+    <span class="n">filename_tcl</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\\\</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="n">script</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+    <span class="n">script_tcl</span> <span class="o">=</span> <span class="n">script</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\\\</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="nb">object</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+    <span class="nb">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+    <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;mol load pdb &#39;</span> <span class="o">+</span> <span class="n">filename_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">isCalpha</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;mol modstyle 0 all trace</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;color Name 1 white</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;color Name 2 white</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;color Name 3 white</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">Universe</span><span class="o">.</span><span class="n">isUniverse</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="c"># add a box around periodic universes</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">basisVectors</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">basis</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">v3</span> <span class="o">=</span> <span class="n">basis</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">v1</span><span class="o">+</span><span class="n">v2</span><span class="o">+</span><span class="n">v3</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="p">),</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v2</span><span class="p">),</span> <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v2</span><span class="p">),</span>
+                           <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v2</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v2</span><span class="p">),</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v3</span><span class="p">),</span> <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v3</span><span class="p">),</span>
+                           <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v2</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v2</span><span class="o">+</span><span class="n">v3</span><span class="p">),</span> <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v2</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v2</span><span class="o">+</span><span class="n">v3</span><span class="p">),</span>
+                           <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v3</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v3</span><span class="p">),</span> <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v3</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v2</span><span class="o">+</span><span class="n">v3</span><span class="p">),</span>
+                           <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v3</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v2</span><span class="o">+</span><span class="n">v3</span><span class="p">),</span> <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v2</span><span class="o">+</span><span class="n">v3</span><span class="p">,</span> <span class="n">p</span><span class="o">+</span><span class="n">v1</span><span class="o">+</span><span class="n">v2</span><span class="o">+</span><span class="n">v3</span><span class="p">)]:</span>
+                <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;graphics 0 line {</span><span class="si">%f</span><span class="s"> </span><span class="si">%f</span><span class="s"> </span><span class="si">%f</span><span class="s">} {</span><span class="si">%f</span><span class="s"> </span><span class="si">%f</span><span class="s"> </span><span class="si">%f</span><span class="s">}</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span>
+                           <span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">p1</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p2</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)))</span>
+    <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;file delete &#39;</span> <span class="o">+</span> <span class="n">filename_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">!=</span> <span class="s">&#39;win32&#39;</span><span class="p">:</span>
+            <span class="c"># Under Windows, it seems to be impossible to delete</span>
+            <span class="c"># the script file while it is still in use. For the moment</span>
+            <span class="c"># we just don&#39;t delete it at all.</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;file delete &#39;</span> <span class="o">+</span> <span class="n">script_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="nb">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="n">viewer</span><span class="p">[</span><span class="s">&#39;pdb&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;-nt&#39;</span><span class="p">,</span> <span class="s">&#39;-e&#39;</span><span class="p">,</span> <span class="n">script</span><span class="p">])</span>
+
+<span class="c">#</span>
+<span class="c"># Animate sequence</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">viewSequenceVMD</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">conf_list</span><span class="p">,</span> <span class="n">periodic</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempdir</span>
+    <span class="n">script</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+    <span class="n">script_tcl</span> <span class="o">=</span> <span class="n">script</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\\\</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="n">np</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">numberOfPoints</span><span class="p">()</span>
+    <span class="n">universe</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">np</span> <span class="o">==</span> <span class="n">universe</span><span class="o">.</span><span class="n">numberOfPoints</span><span class="p">()</span> \
+       <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">conf_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">DCD</span>
+        <span class="n">pdbfile</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+        <span class="n">pdbfile_tcl</span> <span class="o">=</span> <span class="n">pdbfile</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\\\</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="n">dcdfile</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+        <span class="n">dcdfile_tcl</span> <span class="o">=</span> <span class="n">dcdfile</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\\\</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">sequence</span> <span class="o">=</span> <span class="n">DCD</span><span class="o">.</span><span class="n">writePDB</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">conf_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pdbfile</span><span class="p">)</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">sequence</span><span class="p">)</span>
+        <span class="n">DCD</span><span class="o">.</span><span class="n">writeDCD</span><span class="p">(</span><span class="n">conf_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">dcdfile</span><span class="p">,</span> <span class="mf">1.</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
+        <span class="nb">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;mol load pdb &#39;</span> <span class="o">+</span> <span class="n">pdbfile_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">isCalpha</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;mol modstyle 0 all trace</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;animate read dcd &#39;</span> <span class="o">+</span> <span class="n">dcdfile_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">periodic</span><span class="p">:</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;animate style loop</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;animate style once</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;animate forward</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;file delete &#39;</span> <span class="o">+</span> <span class="n">pdbfile_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;file delete &#39;</span> <span class="o">+</span> <span class="n">dcdfile_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">!=</span> <span class="s">&#39;win32&#39;</span><span class="p">:</span>
+            <span class="c"># Under Windows, it seems to be impossible to delete</span>
+            <span class="c"># the script file while it is still in use. For the moment</span>
+            <span class="c"># we just don&#39;t delete it at all.</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;file delete &#39;</span> <span class="o">+</span> <span class="n">script_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">file_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">conf_list</span><span class="p">:</span>
+            <span class="nb">file</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+            <span class="n">file_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">file</span><span class="p">)</span>
+            <span class="nb">object</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="nb">file</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="s">&#39;pdb&#39;</span><span class="p">)</span>
+        <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="nb">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;mol load pdb &#39;</span> <span class="o">+</span> <span class="n">file_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;animate read pdb &#39;</span> <span class="o">+</span> <span class="n">conf</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\\\</span><span class="s">&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">periodic</span><span class="p">:</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;animate style loop</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;animate style once</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;animate forward</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;file delete &#39;</span> <span class="o">+</span> <span class="n">conf</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\\\</span><span class="s">&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">!=</span> <span class="s">&#39;win32&#39;</span><span class="p">:</span>
+            <span class="c"># Under Windows, it seems to be impossible to delete</span>
+            <span class="c"># the script file while it is still in use. For the moment</span>
+            <span class="c"># we just don&#39;t delete it at all.</span>
+            <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;file delete &#39;</span> <span class="o">+</span> <span class="n">script_tcl</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="n">viewer</span><span class="p">[</span><span class="s">&#39;pdb&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;-nt&#39;</span><span class="p">,</span> <span class="s">&#39;-e&#39;</span><span class="p">,</span> <span class="n">script</span><span class="p">])</span>
+
+<span class="c">#</span>
+<span class="c"># iMol support</span>
+<span class="c">#</span>
+
+<span class="c">#</span>
+<span class="c"># View configuration</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">viewConfigurationIMol</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">configuration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">format</span> <span class="o">=</span> <span class="s">&#39;pdb&#39;</span><span class="p">,</span>
+                      <span class="n">label</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="n">format</span> <span class="o">=</span> <span class="n">format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">format</span> <span class="o">!=</span> <span class="s">&#39;pdb&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">genericViewConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempdir</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#39;.pdb&#39;</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="nb">object</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s">&#39;open&#39;</span><span class="p">,</span> <span class="s">&#39;-a&#39;</span><span class="p">,</span> <span class="n">prog</span><span class="p">,</span> <span class="n">filename</span><span class="p">])</span>
+
+<span class="c">#</span>
+<span class="c"># Animate sequence</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">viewSequenceIMol</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">conf_list</span><span class="p">,</span> <span class="n">periodic</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">PDB</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempdir</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#39;.pdb&#39;</span>
+    <span class="nb">file</span> <span class="o">=</span> <span class="n">PDB</span><span class="o">.</span><span class="n">PDBOutputFile</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">conf_list</span><span class="p">:</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">nextModel</span><span class="p">()</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
+    <span class="nb">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">tempfile</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s">&#39;open&#39;</span><span class="p">,</span> <span class="s">&#39;-a&#39;</span><span class="p">,</span> <span class="n">prog</span><span class="p">,</span> <span class="n">filename</span><span class="p">])</span>
+
+<span class="c">#</span>
+<span class="c"># PyMOL support</span>
+<span class="c">#</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">PyMOL</span>
+<span class="k">if</span> <span class="n">PyMOL</span><span class="o">.</span><span class="n">in_pymol</span><span class="p">:</span>
+
+    <span class="n">_representation</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">viewConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">configuration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">format</span> <span class="o">=</span> <span class="s">&#39;pdb&#39;</span><span class="p">,</span>
+                          <span class="n">label</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">_representation</span>
+        <span class="k">if</span> <span class="n">label</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="s">&quot;MMTK Object&quot;</span>
+        <span class="k">if</span> <span class="n">_representation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">_representation</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+        <span class="n">_representation</span> <span class="o">=</span> <span class="n">PyMOL</span><span class="o">.</span><span class="n">Representation</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">configuration</span><span class="p">)</span>
+        <span class="n">_representation</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        
+<div class="viewcode-block" id="viewSequence"><a class="viewcode-back" href="../../modules.html#MMTK.Visualization.viewSequence">[docs]</a>    <span class="k">def</span> <span class="nf">viewSequence</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">conf_list</span><span class="p">,</span> <span class="n">periodic</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">_representation</span>
+        <span class="k">if</span> <span class="n">label</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="s">&quot;MMTK Object&quot;</span>
+        <span class="k">if</span> <span class="n">_representation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">_representation</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+        <span class="n">_representation</span> <span class="o">=</span> <span class="n">PyMOL</span><span class="o">.</span><span class="n">Representation</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span>
+                                               <span class="n">conf_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">_representation</span><span class="o">.</span><span class="n">movie</span><span class="p">(</span><span class="n">conf_list</span><span class="p">)</span>
+</div>
+    <span class="n">genericViewMode</span> <span class="o">=</span> <span class="n">viewMode</span>
+    
+    <span class="k">def</span> <span class="nf">viewMode</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">pymol</span> <span class="kn">import</span> <span class="n">cmd</span>
+        <span class="n">cmd</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&quot;movie_delay&quot;</span><span class="p">,</span><span class="s">&quot;200&quot;</span><span class="p">,</span><span class="n">log</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">genericViewMode</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">subset</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

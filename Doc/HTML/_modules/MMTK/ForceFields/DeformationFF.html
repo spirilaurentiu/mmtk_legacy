@@ -1,0 +1,175 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.ForceFields.DeformationFF &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.ForceFields.DeformationFF</h1><div class="highlight"><pre>
+<span class="c"># Deformation force field</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Deformation force field (elastic network model)</span>
+<span class="sd">For proteins, CalphaForceField is usually a better choice.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK.ForceFields.ForceField</span> <span class="kn">import</span> <span class="n">ForceField</span><span class="p">,</span> <span class="n">ForceFieldData</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">MMTK_forcefield</span> <span class="kn">import</span> <span class="n">NonbondedList</span><span class="p">,</span> <span class="n">NonbondedListTerm</span>
+<span class="kn">from</span> <span class="nn">MMTK_deformation</span> <span class="kn">import</span> <span class="n">DeformationTerm</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+<span class="c">#</span>
+<span class="c"># The deformation force field class</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="DeformationForceField"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.DeformationFF.DeformationForceField">[docs]</a><span class="k">class</span> <span class="nc">DeformationForceField</span><span class="p">(</span><span class="n">ForceField</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Deformation force field for protein normal mode calculations</span>
+
+<span class="sd">    The pair interaction force constant has the form</span>
+<span class="sd">    k(r)=factor*exp(-(r**2-0.01)/range**2). The default value</span>
+<span class="sd">    for range is appropriate for a C-alpha model of a protein.</span>
+<span class="sd">    The offset of 0.01 is a convenience for defining factor;</span>
+<span class="sd">    with this definition, factor is the force constant for a</span>
+<span class="sd">    distance of 0.1nm.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fc_length</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span> <span class="n">factor</span> <span class="o">=</span> <span class="mf">46402.</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param fc_length: a range parameter</span>
+<span class="sd">        :type fc_length: float</span>
+<span class="sd">        :param cutoff: the cutoff for pair interactions, should be</span>
+<span class="sd">                       at least 2.5 nm. Pair interactions in periodic</span>
+<span class="sd">                       systems are calculated using the minimum-image</span>
+<span class="sd">                       convention; the cutoff should therefore never be</span>
+<span class="sd">                       larger than half the smallest edge length of the</span>
+<span class="sd">                       elementary cell.</span>
+<span class="sd">        :type cutoff: float</span>
+<span class="sd">        :param factor: a global scaling factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="n">fc_length</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">)</span>
+        <span class="n">ForceField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;deformation&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="p">(</span><span class="n">fc_length</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">,</span> <span class="n">factor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span> <span class="o">=</span> <span class="n">fc_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span> <span class="o">=</span> <span class="n">cutoff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">factor</span> <span class="o">=</span> <span class="n">factor</span>
+
+    <span class="k">def</span> <span class="nf">ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">evaluatorTerms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">subset1</span><span class="p">,</span> <span class="n">subset2</span><span class="p">,</span> <span class="n">global_data</span><span class="p">):</span>
+        <span class="n">nothing</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">subset1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">set1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">subset1</span><span class="o">.</span><span class="n">atomList</span><span class="p">())</span>
+            <span class="n">set2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">subset2</span><span class="o">.</span><span class="n">atomList</span><span class="p">())</span>
+            <span class="n">excluded_pairs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">Utility</span><span class="o">.</span><span class="n">orderedPairs</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">set1</span><span class="o">-</span><span class="n">set2</span><span class="p">)))</span> \
+                             <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">Utility</span><span class="o">.</span><span class="n">orderedPairs</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">set2</span><span class="o">-</span><span class="n">set1</span><span class="p">)))</span>
+            <span class="n">excluded_pairs</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">excluded_pairs</span><span class="p">))</span>
+            <span class="n">atom_subset</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">set1</span> <span class="o">|</span> <span class="n">set2</span><span class="p">)</span>
+            <span class="n">atom_subset</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+            <span class="n">atom_subset</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">atom_subset</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">atom_subset</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">)</span>
+            <span class="n">excluded_pairs</span> <span class="o">=</span> <span class="n">nothing</span>
+        <span class="n">nbl</span> <span class="o">=</span> <span class="n">NonbondedList</span><span class="p">(</span><span class="n">excluded_pairs</span><span class="p">,</span> <span class="n">nothing</span><span class="p">,</span> <span class="n">atom_subset</span><span class="p">,</span> <span class="n">universe</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">)</span>
+        <span class="n">update</span> <span class="o">=</span> <span class="n">NonbondedListTerm</span><span class="p">(</span><span class="n">nbl</span><span class="p">)</span>
+        <span class="n">cutoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span>
+        <span class="k">if</span> <span class="n">cutoff</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">cutoff</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">ev</span> <span class="o">=</span> <span class="n">DeformationTerm</span><span class="p">(</span><span class="n">universe</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span> <span class="n">nbl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_length</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">update</span><span class="p">,</span> <span class="n">ev</span><span class="p">]</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

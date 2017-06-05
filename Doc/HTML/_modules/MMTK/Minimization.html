@@ -1,0 +1,278 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Minimization &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Minimization</h1><div class="highlight"><pre>
+<span class="c"># This module implements energy minimizers.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Energy minimizers</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Features</span><span class="p">,</span> <span class="n">Trajectory</span><span class="p">,</span> <span class="n">Units</span>
+<span class="kn">from</span> <span class="nn">MMTK_minimization</span> <span class="kn">import</span> <span class="n">conjugateGradient</span><span class="p">,</span> <span class="n">steepestDescent</span>
+
+<span class="c">#</span>
+<span class="c"># Minimizer base class</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">Minimizer</span><span class="p">(</span><span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryGenerator</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+	<span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryGenerator</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+    <span class="n">default_options</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;steps&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s">&#39;step_size&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">,</span>
+		       <span class="s">&#39;convergence&#39;</span><span class="p">:</span> <span class="mf">0.01</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">kJ</span><span class="o">/</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">mol</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">nm</span><span class="p">),</span>
+                       <span class="s">&#39;background&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;threads&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                       <span class="s">&#39;mpi_communicator&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&#39;actions&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+
+    <span class="n">available_data</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;energy&#39;</span><span class="p">,</span> <span class="s">&#39;configuration&#39;</span><span class="p">,</span> <span class="s">&#39;gradients&#39;</span><span class="p">]</span>
+
+    <span class="n">restart_data</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;configuration&#39;</span><span class="p">,</span> <span class="s">&#39;energy&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+	<span class="k">raise</span> <span class="ne">AttributeError</span>
+
+<span class="c">#</span>
+<span class="c"># Steepest descent minimizer</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="SteepestDescentMinimizer"><a class="viewcode-back" href="../../modules.html#MMTK.Minimization.SteepestDescentMinimizer">[docs]</a><span class="k">class</span> <span class="nc">SteepestDescentMinimizer</span><span class="p">(</span><span class="n">Minimizer</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Steepest-descent minimizer</span>
+
+<span class="sd">    The minimizer can handle fixed atoms, but no distance constraints.</span>
+<span class="sd">    It is fully thread-safe.</span>
+
+<span class="sd">    The minimization is started by calling the minimizer object.</span>
+<span class="sd">    All the keyword options (see documnentation of __init__) can be</span>
+<span class="sd">    specified either when creating the minimizer or when calling it.</span>
+
+<span class="sd">    The following data categories and variables are available for</span>
+<span class="sd">    output:</span>
+
+<span class="sd">     - category &quot;configuration&quot;: configuration and box size (for</span>
+<span class="sd">       periodic universes)</span>
+
+<span class="sd">     - category &quot;gradients&quot;: energy gradients for each atom</span>
+
+<span class="sd">     - category &quot;energy&quot;: potential energy and</span>
+<span class="sd">                          norm of the potential energy gradient</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe on which the integrator acts</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :keyword steps: the number of minimization steps (default is 100)</span>
+<span class="sd">        :type steps: int</span>
+<span class="sd">        :keyword step_size: the initial size of a minimization step</span>
+<span class="sd">                            (default is 0.002 nm)</span>
+<span class="sd">        :type step_size: float</span>
+<span class="sd">        :keyword convergence: the root-mean-square gradient length at which</span>
+<span class="sd">                              minimization stops (default is 0.01 kJ/mol/nm)</span>
+<span class="sd">        :type convergence: float</span>
+<span class="sd">        :keyword actions: a list of actions to be executed periodically</span>
+<span class="sd">                          (default is none)</span>
+<span class="sd">        :type actions: list</span>
+<span class="sd">        :keyword threads: the number of threads to use in energy evaluation</span>
+<span class="sd">                          (default set by MMTK_ENERGY_THREADS)</span>
+<span class="sd">        :type threads: int</span>
+<span class="sd">        :keyword background: if True, the integration is executed as a</span>
+<span class="sd">                             separate thread (default: False)</span>
+<span class="sd">        :type background: bool</span>
+<span class="sd">        :keyword mpi_communicator: an MPI communicator object, or None,</span>
+<span class="sd">                                   meaning no parallelization (default: None)</span>
+<span class="sd">        :type mpi_communicator: Scientific.MPI.MPICommunicator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="n">Minimizer</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="n">Features</span><span class="o">.</span><span class="n">FixedParticleFeature</span><span class="p">,</span>
+			 <span class="n">Features</span><span class="o">.</span><span class="n">NoseThermostatFeature</span><span class="p">,</span>
+                         <span class="n">Features</span><span class="o">.</span><span class="n">AndersenBarostatFeature</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the minimizer. The keyword options are the same as described</span>
+<span class="sd">        under __init__.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">setCallOptions</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+	<span class="n">Features</span><span class="o">.</span><span class="n">checkFeatures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+	<span class="n">configuration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+	<span class="n">fixed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">getAtomBooleanArray</span><span class="p">(</span><span class="s">&#39;fixed&#39;</span><span class="p">)</span>
+        <span class="n">nt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;threads&#39;</span><span class="p">)</span>
+        <span class="n">comm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;mpi_communicator&#39;</span><span class="p">)</span>
+	<span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">energyEvaluator</span><span class="p">(</span><span class="n">threads</span><span class="o">=</span><span class="n">nt</span><span class="p">,</span>
+                                                  <span class="n">mpi_communicator</span><span class="o">=</span><span class="n">comm</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">CEvaluator</span><span class="p">()</span>
+	<span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                <span class="n">configuration</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">fixed</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">evaluator</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;steps&#39;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;step_size&#39;</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;convergence&#39;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getActions</span><span class="p">(),</span>
+                <span class="s">&#39;Steepest descent minimization with &#39;</span> <span class="o">+</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">optionString</span><span class="p">([</span><span class="s">&#39;convergence&#39;</span><span class="p">,</span> <span class="s">&#39;step_size&#39;</span><span class="p">,</span> <span class="s">&#39;steps&#39;</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">steepestDescent</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Conjugate gradient minimizer</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="ConjugateGradientMinimizer"><a class="viewcode-back" href="../../modules.html#MMTK.Minimization.ConjugateGradientMinimizer">[docs]</a><span class="k">class</span> <span class="nc">ConjugateGradientMinimizer</span><span class="p">(</span><span class="n">Minimizer</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Conjugate gradient minimizer</span>
+
+<span class="sd">    The minimizer can handle fixed atoms, but no distance constraints.</span>
+<span class="sd">    It is fully thread-safe.</span>
+
+<span class="sd">    The minimization is started by calling the minimizer object.</span>
+<span class="sd">    All the keyword options can be specified either when</span>
+<span class="sd">    creating the minimizer or when calling it.</span>
+
+<span class="sd">    The following data categories and variables are available for</span>
+<span class="sd">    output:</span>
+
+<span class="sd">     - category &quot;configuration&quot;: configuration and box size (for</span>
+<span class="sd">       periodic universes)</span>
+
+<span class="sd">     - category &quot;gradients&quot;: energy gradients for each atom</span>
+
+<span class="sd">     - category &quot;energy&quot;: potential energy and</span>
+<span class="sd">                          norm of the potential energy gradient</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe on which the integrator acts</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :keyword steps: the number of minimization steps (default is 100)</span>
+<span class="sd">        :type steps: int</span>
+<span class="sd">        :keyword step_size: the initial size of a minimization step</span>
+<span class="sd">                            (default is 0.002 nm)</span>
+<span class="sd">        :type step_size: float</span>
+<span class="sd">        :keyword convergence: the root-mean-square gradient length at which</span>
+<span class="sd">                              minimization stops (default is 0.01 kJ/mol/nm)</span>
+<span class="sd">        :type convergence: float</span>
+<span class="sd">        :keyword actions: a list of actions to be executed periodically</span>
+<span class="sd">                          (default is none)</span>
+<span class="sd">        :type actions: list</span>
+<span class="sd">        :keyword threads: the number of threads to use in energy evaluation</span>
+<span class="sd">                          (default set by MMTK_ENERGY_THREADS)</span>
+<span class="sd">        :type threads: int</span>
+<span class="sd">        :keyword background: if True, the integration is executed as a</span>
+<span class="sd">                             separate thread (default: False)</span>
+<span class="sd">        :type background: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="n">Minimizer</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="n">Features</span><span class="o">.</span><span class="n">FixedParticleFeature</span><span class="p">,</span>
+			 <span class="n">Features</span><span class="o">.</span><span class="n">NoseThermostatFeature</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the minimizer. The keyword options are the same as described</span>
+<span class="sd">        under __init__.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">setCallOptions</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+	<span class="n">Features</span><span class="o">.</span><span class="n">checkFeatures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+	<span class="n">configuration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+	<span class="n">fixed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">getAtomBooleanArray</span><span class="p">(</span><span class="s">&#39;fixed&#39;</span><span class="p">)</span>
+        <span class="n">nt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;threads&#39;</span><span class="p">)</span>
+	<span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">energyEvaluator</span><span class="p">(</span><span class="n">threads</span><span class="o">=</span><span class="n">nt</span><span class="p">)</span><span class="o">.</span><span class="n">CEvaluator</span><span class="p">()</span>
+	<span class="n">args</span> <span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+               <span class="n">configuration</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">fixed</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">evaluator</span><span class="p">,</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;steps&#39;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;step_size&#39;</span><span class="p">),</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;convergence&#39;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getActions</span><span class="p">(),</span>
+               <span class="s">&#39;Conjugate gradient minimization with &#39;</span> <span class="o">+</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">optionString</span><span class="p">([</span><span class="s">&#39;convergence&#39;</span><span class="p">,</span> <span class="s">&#39;step_size&#39;</span><span class="p">,</span> <span class="s">&#39;steps&#39;</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">conjugateGradient</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

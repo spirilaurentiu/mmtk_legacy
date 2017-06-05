@@ -1,0 +1,1159 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Collections &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Collections</h1><div class="highlight"><pre>
+<span class="c"># This module defines collections of chemical objects.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Collections of chemical objects</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Utility</span><span class="p">,</span> <span class="n">Units</span><span class="p">,</span> <span class="n">ParticleProperties</span><span class="p">,</span> <span class="n">Visualization</span>
+<span class="kn">from</span> <span class="nn">MMTK.Geometry</span> <span class="kn">import</span> <span class="n">superpositionFit</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Objects3D</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Transformation</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+<span class="kn">import</span> <span class="nn">copy</span><span class="o">,</span> <span class="nn">itertools</span>
+
+<span class="c">#</span>
+<span class="c"># This class defines groups of atoms. It is used as a base class</span>
+<span class="c"># for anything containing atoms, including chemical objects, collections,</span>
+<span class="c"># universes etc., but it can&#39;t be used directly. All its subclasses</span>
+<span class="c"># must define a method atomList() that returns a list of all their atoms.</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="GroupOfAtoms"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms">[docs]</a><span class="k">class</span> <span class="nc">GroupOfAtoms</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Anything that consists of atoms</span>
+
+<span class="sd">    A mix-in class that defines a large set of operations which are</span>
+<span class="sd">    common to all objects that consist of atoms, i.e. any subset of</span>
+<span class="sd">    a chemical system. Examples are atoms, molecules, collections,</span>
+<span class="sd">    or universes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="GroupOfAtoms.numberOfAtoms"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.numberOfAtoms">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfAtoms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the number of atoms</span>
+<span class="sd">        :rtype: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.numberOfPoints"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.numberOfPoints">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfPoints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the number of geometrical points that define the</span>
+<span class="sd">                  object. It is currently equal to the number of atoms,</span>
+<span class="sd">                  but could be different e.g. for quantum systems, in which</span>
+<span class="sd">                  each atom is described by a wave function or a path integral.</span>
+<span class="sd">        :rtype: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">([</span><span class="n">a</span><span class="o">.</span><span class="n">numberOfPoints</span><span class="p">()</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">()])</span>
+</div>
+    <span class="n">numberOfCartesianCoordinates</span> <span class="o">=</span> <span class="n">numberOfPoints</span>
+
+<div class="viewcode-block" id="GroupOfAtoms.numberOfFixedAtoms"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.numberOfFixedAtoms">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfFixedAtoms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the number of atoms that are fixed, i.e. that cannot move</span>
+<span class="sd">        :rtype: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">fixed</span><span class="p">:</span> <span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">n</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.degreesOfFreedom"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.degreesOfFreedom">[docs]</a>    <span class="k">def</span> <span class="nf">degreesOfFreedom</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the number of mechanical degrees of freedom</span>
+<span class="sd">        :rtype: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">numberOfAtoms</span><span class="p">()</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">numberOfFixedAtoms</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.atomCollection"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.atomCollection">[docs]</a>    <span class="k">def</span> <span class="nf">atomCollection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a collection containing all atoms in the object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.atomsWithDefinedPositions"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.atomsWithDefinedPositions">[docs]</a>    <span class="k">def</span> <span class="nf">atomsWithDefinedPositions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration object, or None for the</span>
+<span class="sd">                     current configuration</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :returns: a collection of all atoms that have a position in the</span>
+<span class="sd">                  given configuration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Collection</span><span class="p">([</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">()</span>
+                           <span class="k">if</span> <span class="n">Utility</span><span class="o">.</span><span class="n">isDefinedPosition</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">))])</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.mass"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.mass">[docs]</a>    <span class="k">def</span> <span class="nf">mass</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the total mass</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">_mass</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.centerOfMass"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.centerOfMass">[docs]</a>    <span class="k">def</span> <span class="nf">centerOfMass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration object, or None for the</span>
+<span class="sd">                     current configuration</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :returns: the center of mass in the given configuration</span>
+<span class="sd">        :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">universe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">contiguousObjectOffset</span><span class="p">([</span><span class="bp">self</span><span class="p">],</span> <span class="n">conf</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">mr</span> <span class="o">=</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+                <span class="n">m</span> <span class="o">+=</span> <span class="n">a</span><span class="o">.</span><span class="n">_mass</span>
+                <span class="n">mr</span> <span class="o">+=</span> <span class="n">a</span><span class="o">.</span><span class="n">_mass</span> <span class="o">*</span> <span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+                <span class="n">m</span> <span class="o">+=</span> <span class="n">a</span><span class="o">.</span><span class="n">_mass</span>
+                <span class="n">mr</span> <span class="o">+=</span> <span class="n">a</span><span class="o">.</span><span class="n">_mass</span> <span class="o">*</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span><span class="o">+</span><span class="n">offset</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">mr</span><span class="o">/</span><span class="n">m</span>
+</div>
+    <span class="n">position</span> <span class="o">=</span> <span class="n">centerOfMass</span>
+
+<div class="viewcode-block" id="GroupOfAtoms.centerAndMomentOfInertia"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.centerAndMomentOfInertia">[docs]</a>    <span class="k">def</span> <span class="nf">centerAndMomentOfInertia</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration object, or None for the</span>
+<span class="sd">                     current configuration</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :returns: the center of mass and the moment of inertia tensor</span>
+<span class="sd">                  in the given configuration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">delta</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">universe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">contiguousObjectOffset</span><span class="p">([</span><span class="bp">self</span><span class="p">],</span> <span class="n">conf</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">mr</span> <span class="o">=</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">Tensor</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="p">[</span><span class="mi">3</span><span class="o">*</span><span class="p">[</span><span class="mf">0.</span><span class="p">]])</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">ma</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">_mass</span>
+            <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span><span class="o">+</span><span class="n">offset</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+            <span class="n">m</span> <span class="o">+=</span> <span class="n">ma</span>
+            <span class="n">mr</span> <span class="o">+=</span> <span class="n">ma</span><span class="o">*</span><span class="n">r</span>
+            <span class="n">t</span> <span class="o">+=</span> <span class="n">ma</span><span class="o">*</span><span class="n">r</span><span class="o">.</span><span class="n">dyadicProduct</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+        <span class="n">cm</span> <span class="o">=</span> <span class="n">mr</span><span class="o">/</span><span class="n">m</span>
+        <span class="n">t</span> <span class="o">-=</span> <span class="n">m</span><span class="o">*</span><span class="n">cm</span><span class="o">.</span><span class="n">dyadicProduct</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">trace</span><span class="p">()</span><span class="o">*</span><span class="n">delta</span> <span class="o">-</span> <span class="n">t</span>
+        <span class="k">return</span> <span class="n">cm</span><span class="p">,</span> <span class="n">t</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.rotationalConstants"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.rotationalConstants">[docs]</a>    <span class="k">def</span> <span class="nf">rotationalConstants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration object, or None for the</span>
+<span class="sd">                     current configuration</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :returns: a sorted array of rotational constants A, B, C</span>
+<span class="sd">                  in internal units</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">com</span><span class="p">,</span> <span class="n">i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centerAndMomentOfInertia</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+        <span class="n">pmi</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">eigenvalues</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">h</span> <span class="o">/</span> <span class="p">(</span><span class="mf">8.</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">pmi</span><span class="p">))[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.boundingBox"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.boundingBox">[docs]</a>    <span class="k">def</span> <span class="nf">boundingBox</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration object, or None for the</span>
+<span class="sd">                     current configuration</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :returns: two opposite corners of a bounding box around the</span>
+<span class="sd">                  object. The bounding box is the smallest rectangular</span>
+<span class="sd">                  bounding box with edges parallel to the coordinate axes.</span>
+<span class="sd">        :rtype: tuple of two Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">atoms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="nb">min</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span><span class="o">.</span><span class="n">array</span>
+        <span class="nb">max</span> <span class="o">=</span> <span class="nb">min</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span><span class="o">.</span><span class="n">array</span>
+            <span class="nb">min</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="nb">min</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+            <span class="nb">max</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="nb">max</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Vector</span><span class="p">(</span><span class="nb">min</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="nb">max</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.boundingSphere"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.boundingSphere">[docs]</a>    <span class="k">def</span> <span class="nf">boundingSphere</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration object, or None for the</span>
+<span class="sd">                     current configuration</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :returns: a sphere that contains all atoms in the object.</span>
+<span class="sd">                  This is B{not} the minimal bounding sphere, just B{some}</span>
+<span class="sd">                  bounding sphere.</span>
+<span class="sd">        :rtype: Scientific.Geometry.Objects3D.Sphere</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">atoms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">),</span>
+                     <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span><span class="o">-</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">Objects3D</span><span class="o">.</span><span class="n">Sphere</span><span class="p">(</span><span class="n">center</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.rmsDifference"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.rmsDifference">[docs]</a>    <span class="k">def</span> <span class="nf">rmsDifference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf1</span><span class="p">,</span> <span class="n">conf2</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf1: a configuration object</span>
+<span class="sd">        :type conf1: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :param conf2: a configuration object, or None for the</span>
+<span class="sd">                      current configuration</span>
+<span class="sd">        :type conf2: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :returns: the RMS (root-mean-square) difference between the</span>
+<span class="sd">                  conformations of the object in two universe configurations,</span>
+<span class="sd">                  conf1 and conf2</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="n">conf1</span><span class="o">.</span><span class="n">universe</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">rms</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">ma</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">_mass</span>
+            <span class="n">dr</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf1</span><span class="p">),</span> <span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf2</span><span class="p">))</span>
+            <span class="n">m</span> <span class="o">+=</span> <span class="n">ma</span>
+            <span class="n">rms</span> <span class="o">+=</span> <span class="n">ma</span><span class="o">*</span><span class="n">dr</span><span class="o">*</span><span class="n">dr</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">rms</span><span class="o">/</span><span class="n">m</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">findTransformationAsQuaternion</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf1</span><span class="p">,</span> <span class="n">conf2</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">universe</span><span class="o">.</span><span class="n">is_periodic</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;superposition in periodic universe &quot;</span>
+                             <span class="s">&quot;is not defined&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">conf1</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">universe</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;conformation is for a different universe&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">conf2</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">conf2</span> <span class="o">=</span> <span class="n">conf1</span>
+            <span class="n">conf1</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">conf2</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">universe</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;conformation is for a different universe&quot;</span><span class="p">)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">masses</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">superpositionFit</span><span class="p">([(</span><span class="n">weights</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">conf1</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">conf2</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+                                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">()])</span>
+
+<div class="viewcode-block" id="GroupOfAtoms.findTransformation"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.findTransformation">[docs]</a>    <span class="k">def</span> <span class="nf">findTransformation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf1</span><span class="p">,</span> <span class="n">conf2</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf1: a configuration object</span>
+<span class="sd">        :type conf1: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :param conf2: a configuration object, or None for the</span>
+<span class="sd">                      current configuration</span>
+<span class="sd">        :type conf2: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :returns: the linear transformation that, when applied to</span>
+<span class="sd">                  the object in configuration conf1, minimizes the</span>
+<span class="sd">                  RMS distance to the conformation in conf2, and the</span>
+<span class="sd">                  minimal RMS distance.</span>
+<span class="sd">                  If conf2 is None, returns the transformation from the</span>
+<span class="sd">                  current configuration to conf1 and the associated</span>
+<span class="sd">                  RMS distance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">q</span><span class="p">,</span> <span class="n">cm1</span><span class="p">,</span> <span class="n">cm2</span><span class="p">,</span> <span class="n">rms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">findTransformationAsQuaternion</span><span class="p">(</span><span class="n">conf1</span><span class="p">,</span> <span class="n">conf2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Transformation</span><span class="o">.</span><span class="n">Translation</span><span class="p">(</span><span class="n">cm2</span><span class="p">)</span> <span class="o">*</span> \
+               <span class="n">q</span><span class="o">.</span><span class="n">asRotation</span><span class="p">()</span> <span class="o">*</span> \
+               <span class="n">Transformation</span><span class="o">.</span><span class="n">Translation</span><span class="p">(</span><span class="o">-</span><span class="n">cm1</span><span class="p">),</span> \
+               <span class="n">rms</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.translateBy"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.translateBy">[docs]</a>    <span class="k">def</span> <span class="nf">translateBy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Translate the object by a displacement vector</span>
+<span class="sd">        </span>
+<span class="sd">        :param vector: the displacement vector</span>
+<span class="sd">        :type vector: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">translateBy</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.translateTo"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.translateTo">[docs]</a>    <span class="k">def</span> <span class="nf">translateTo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Translate the object such that its center of mass is at position</span>
+<span class="sd">        :param position: the final position</span>
+<span class="sd">        :type position: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translateBy</span><span class="p">(</span><span class="n">position</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">centerOfMass</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.normalizePosition"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.normalizePosition">[docs]</a>    <span class="k">def</span> <span class="nf">normalizePosition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Translate the center of mass to the coordinate origin</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translateTo</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.normalizeConfiguration"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.normalizeConfiguration">[docs]</a>    <span class="k">def</span> <span class="nf">normalizeConfiguration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply a linear transformation such that the center of mass of</span>
+<span class="sd">        the object is translated to the coordinate origin and its</span>
+<span class="sd">        principal axes of inertia become parallel to the three</span>
+<span class="sd">        coordinate axes.</span>
+
+<span class="sd">        :param repr: the specific representation for axis alignment:</span>
+<span class="sd">          - Ir    : x y z &lt;--&gt; b c a</span>
+<span class="sd">          - IIr   : x y z &lt;--&gt; c a b</span>
+<span class="sd">          - IIIr  : x y z &lt;--&gt; a b c</span>
+<span class="sd">          - Il    : x y z &lt;--&gt; c b a</span>
+<span class="sd">          - IIl   : x y z &lt;--&gt; a c b</span>
+<span class="sd">          - IIIl  : x y z &lt;--&gt; b a c        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">transformation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalizingTransformation</span><span class="p">(</span><span class="nb">repr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">applyTransformation</span><span class="p">(</span><span class="n">transformation</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.normalizingTransformation"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.normalizingTransformation">[docs]</a>    <span class="k">def</span> <span class="nf">normalizingTransformation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate a linear transformation that shifts the center of mass</span>
+<span class="sd">        of the object to the coordinate origin and makes its</span>
+<span class="sd">        principal axes of inertia parallel to the three coordinate</span>
+<span class="sd">        axes.</span>
+
+<span class="sd">        :param repr: the specific representation for axis alignment:</span>
+<span class="sd">          Ir    : x y z &lt;--&gt; b c a</span>
+<span class="sd">          IIr   : x y z &lt;--&gt; c a b</span>
+<span class="sd">          IIIr  : x y z &lt;--&gt; a b c</span>
+<span class="sd">          Il    : x y z &lt;--&gt; c b a</span>
+<span class="sd">          IIl   : x y z &lt;--&gt; a c b</span>
+<span class="sd">          IIIl  : x y z &lt;--&gt; b a c</span>
+<span class="sd">        :returns: the normalizing transformation</span>
+<span class="sd">        :rtype: Scientific.Geometry.Transformation.RigidBodyTransformation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">Scientific.LA</span> <span class="kn">import</span> <span class="n">determinant</span>
+        <span class="n">cm</span><span class="p">,</span> <span class="n">inertia</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centerAndMomentOfInertia</span><span class="p">()</span>
+        <span class="n">ev</span><span class="p">,</span> <span class="n">diag</span> <span class="o">=</span> <span class="n">inertia</span><span class="o">.</span><span class="n">diagonalization</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">determinant</span><span class="p">(</span><span class="n">diag</span><span class="o">.</span><span class="n">array</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">diag</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">diag</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">repr</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">seq</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">ev</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">repr</span> <span class="o">==</span> <span class="s">&#39;Ir&#39;</span><span class="p">:</span>
+                <span class="n">seq</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+            <span class="k">elif</span> <span class="nb">repr</span> <span class="o">==</span> <span class="s">&#39;IIr&#39;</span><span class="p">:</span>
+                <span class="n">seq</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+            <span class="k">elif</span> <span class="nb">repr</span> <span class="o">==</span> <span class="s">&#39;Il&#39;</span><span class="p">:</span>
+                <span class="n">seq</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="nb">repr</span> <span class="o">==</span> <span class="s">&#39;IIl&#39;</span><span class="p">:</span>
+                <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">seq</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+            <span class="k">elif</span> <span class="nb">repr</span> <span class="o">==</span> <span class="s">&#39;IIIl&#39;</span><span class="p">:</span>
+                <span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">seq</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">seq</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+            <span class="k">elif</span> <span class="nb">repr</span> <span class="o">!=</span> <span class="s">&#39;IIIr&#39;</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s">&#39;unknown representation&#39;</span>
+            <span class="n">diag</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">diag</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">seq</span><span class="p">)</span>                
+        <span class="k">return</span> <span class="n">Transformation</span><span class="o">.</span><span class="n">Rotation</span><span class="p">(</span><span class="n">diag</span><span class="p">)</span><span class="o">*</span><span class="n">Transformation</span><span class="o">.</span><span class="n">Translation</span><span class="p">(</span><span class="o">-</span><span class="n">cm</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.applyTransformation"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.applyTransformation">[docs]</a>    <span class="k">def</span> <span class="nf">applyTransformation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply a transformation to the object</span>
+
+<span class="sd">        :param t: the transformation to be applied</span>
+<span class="sd">        :type t: Scientific.Geometry.Transformation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">t</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">()))</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.displacementUnderTransformation"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.displacementUnderTransformation">[docs]</a>    <span class="k">def</span> <span class="nf">displacementUnderTransformation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param t: the transformation to be applied</span>
+<span class="sd">        :type t: Scientific.Geometry.Transformation</span>
+<span class="sd">        :returns: the displacement vectors for the atoms in the object</span>
+<span class="sd">                  that correspond to the transformation t.</span>
+<span class="sd">        :rtype: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+            <span class="n">d</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">-</span><span class="n">r</span>
+        <span class="k">return</span> <span class="n">d</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.rotateAroundCenter"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.rotateAroundCenter">[docs]</a>    <span class="k">def</span> <span class="nf">rotateAroundCenter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis_direction</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Rotate the object around an axis that passes through its center</span>
+<span class="sd">        of mass.</span>
+
+<span class="sd">        :param axis_direction: the direction of the axis of rotation</span>
+<span class="sd">        :type axis_direction: Scientific.Geometry.Vector</span>
+<span class="sd">        :param angle: the rotation angle (in radians)</span>
+<span class="sd">        :type angle: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centerOfMass</span><span class="p">()</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">Transformation</span><span class="o">.</span><span class="n">Translation</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span> <span class="o">*</span> \
+            <span class="n">Transformation</span><span class="o">.</span><span class="n">Rotation</span><span class="p">(</span><span class="n">axis_direction</span><span class="p">,</span> <span class="n">angle</span><span class="p">)</span> <span class="o">*</span> \
+            <span class="n">Transformation</span><span class="o">.</span><span class="n">Translation</span><span class="p">(</span><span class="o">-</span><span class="n">cm</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">applyTransformation</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.rotateAroundOrigin"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.rotateAroundOrigin">[docs]</a>    <span class="k">def</span> <span class="nf">rotateAroundOrigin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis_direction</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Rotate the object around an axis that passes through the</span>
+<span class="sd">        coordinate origin.</span>
+
+<span class="sd">        :param axis_direction: the direction of the axis of rotation</span>
+<span class="sd">        :type axis_direction: Scientific.Geometry.Vector</span>
+<span class="sd">        :param angle: the rotation angle (in radians)</span>
+<span class="sd">        :type angle: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">applyTransformation</span><span class="p">(</span><span class="n">Transformation</span><span class="o">.</span><span class="n">Rotation</span><span class="p">(</span><span class="n">axis_direction</span><span class="p">,</span> <span class="n">angle</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.rotateAroundAxis"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.rotateAroundAxis">[docs]</a>    <span class="k">def</span> <span class="nf">rotateAroundAxis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point1</span><span class="p">,</span> <span class="n">point2</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Rotate the object arond an axis specified by two points</span>
+
+<span class="sd">        :param point1: the first point</span>
+<span class="sd">        :type point1: Scientific.Geometry.Vector</span>
+<span class="sd">        :param point2: the second point</span>
+<span class="sd">        :type point2: Scientific.Geometry.Vector</span>
+<span class="sd">        :param angle: the rotation angle (in radians)</span>
+<span class="sd">        :type angle: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tr1</span> <span class="o">=</span> <span class="n">Transformation</span><span class="o">.</span><span class="n">Translation</span><span class="p">(</span><span class="o">-</span><span class="n">point1</span><span class="p">)</span>
+        <span class="n">tr2</span> <span class="o">=</span> <span class="n">Transformation</span><span class="o">.</span><span class="n">Rotation</span><span class="p">(</span><span class="n">point2</span><span class="o">-</span><span class="n">point1</span><span class="p">,</span> <span class="n">angle</span><span class="p">)</span>
+        <span class="n">tr3</span> <span class="o">=</span> <span class="n">tr1</span><span class="o">.</span><span class="n">inverse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">applyTransformation</span><span class="p">(</span><span class="n">tr3</span><span class="o">*</span><span class="n">tr2</span><span class="o">*</span><span class="n">tr1</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.writeToFile"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.writeToFile">[docs]</a>    <span class="k">def</span> <span class="nf">writeToFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">configuration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">format</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write a representation of the object in a given</span>
+<span class="sd">        configuration to a file.</span>
+
+<span class="sd">        :param filename: the name of the file</span>
+<span class="sd">        :type filename: str</span>
+<span class="sd">        :param configuration: a configuration object, or None for the</span>
+<span class="sd">                              current configuration</span>
+<span class="sd">        :type configuration: :class:`~MMTK.ParticleProperties.Configuration` or NoneType</span>
+<span class="sd">        :param format: &#39;pdb&#39; or &#39;vrml&#39; (default: guess from filename)</span>
+<span class="sd">                       A subformat specification can be added, separated</span>
+<span class="sd">                       by a dot. Subformats of &#39;vrml&#39; are &#39;wireframe&#39;</span>
+<span class="sd">                       (default), &#39;ball_and_stick&#39;, &#39;highlight&#39; (like</span>
+<span class="sd">                       &#39;wireframe&#39;, but with a small sphere for</span>
+<span class="sd">                       all atoms that have an attribute &#39;highlight&#39; with a</span>
+<span class="sd">                       non-zero value), and &#39;charge&#39; (wireframe plus small</span>
+<span class="sd">                       spheres for the atoms whose color indicates the</span>
+<span class="sd">                       charge on a red-to-green color scale)</span>
+<span class="sd">        :type format: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">ConfigIO</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">universe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">configuration</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">contiguousObjectConfiguration</span><span class="p">(</span>
+                               <span class="p">[</span><span class="bp">self</span><span class="p">],</span> <span class="n">configuration</span><span class="p">)</span>
+        <span class="nb">file</span> <span class="o">=</span> <span class="n">ConfigIO</span><span class="o">.</span><span class="n">OutputFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configuration</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.view"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.view">[docs]</a>    <span class="k">def</span> <span class="nf">view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configuration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">format</span> <span class="o">=</span> <span class="s">&#39;pdb&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start an external viewer for the object in the given</span>
+<span class="sd">        configuration.</span>
+
+<span class="sd">        :param configuration: the configuration to be visualized</span>
+<span class="sd">        :type configuration: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :param format: &#39;pdb&#39; (for running $PDBVIEWER) or &#39;vrml&#39;</span>
+<span class="sd">                       (for running $VRMLVIEWER). An optional</span>
+<span class="sd">                       subformat specification can be added, see</span>
+<span class="sd">                       :class:`~MMTK.Collections.GroupOfAtoms.writeToFile` for the details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">universe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">configuration</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">contiguousObjectConfiguration</span><span class="p">([</span><span class="bp">self</span><span class="p">],</span>
+                                                                <span class="n">configuration</span><span class="p">)</span>
+        <span class="n">Visualization</span><span class="o">.</span><span class="n">viewConfiguration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">format</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.kineticEnergy"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.kineticEnergy">[docs]</a>    <span class="k">def</span> <span class="nf">kineticEnergy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">velocities</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param velocities: a set of velocities for all atoms, or</span>
+<span class="sd">                           None for the current velocities</span>
+<span class="sd">        :type velocities: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :returns: the kinetic energy</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">velocities</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">velocities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span><span class="o">.</span><span class="n">velocities</span><span class="p">()</span>
+        <span class="n">energy</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">velocities</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+            <span class="n">energy</span> <span class="o">=</span> <span class="n">energy</span> <span class="o">+</span> <span class="n">a</span><span class="o">.</span><span class="n">_mass</span><span class="o">*</span><span class="p">(</span><span class="n">v</span><span class="o">*</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">energy</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.temperature"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.temperature">[docs]</a>    <span class="k">def</span> <span class="nf">temperature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">velocities</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param velocities: a set of velocities for all atoms, or</span>
+<span class="sd">                           None for the current velocities</span>
+<span class="sd">        :type velocities: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :returns: the temperature</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">energy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kineticEnergy</span><span class="p">(</span><span class="n">velocities</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mf">2.</span><span class="o">*</span><span class="n">energy</span><span class="o">/</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">degreesOfFreedom</span><span class="p">()</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">k_B</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.momentum"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.momentum">[docs]</a>    <span class="k">def</span> <span class="nf">momentum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">velocities</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param velocities: a set of velocities for all atoms, or</span>
+<span class="sd">                           None for the current velocities</span>
+<span class="sd">        :type velocities: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :returns: the momentum</span>
+<span class="sd">        :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">velocities</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">velocities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span><span class="o">.</span><span class="n">velocities</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">((</span><span class="n">a</span><span class="o">.</span><span class="n">_mass</span><span class="o">*</span><span class="n">velocities</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">()),</span>
+                   <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.angularMomentum"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.angularMomentum">[docs]</a>    <span class="k">def</span> <span class="nf">angularMomentum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">velocities</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param velocities: a set of velocities for all atoms, or</span>
+<span class="sd">                           None for the current velocities</span>
+<span class="sd">        :type velocities: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :param conf: a configuration object, or None for the</span>
+<span class="sd">                     current configuration</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :returns: the angluar momentum</span>
+<span class="sd">        :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">velocities</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">velocities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span><span class="o">.</span><span class="n">velocities</span><span class="p">()</span>
+        <span class="n">cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centerOfMass</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">((</span><span class="n">a</span><span class="o">.</span><span class="n">_mass</span><span class="o">*</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">velocities</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">()),</span>
+                   <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.angularVelocity"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.angularVelocity">[docs]</a>    <span class="k">def</span> <span class="nf">angularVelocity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">velocities</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param velocities: a set of velocities for all atoms, or</span>
+<span class="sd">                           None for the current velocities</span>
+<span class="sd">        :type velocities: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :param conf: a configuration object, or None for the</span>
+<span class="sd">                     current configuration</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :returns: the angluar velocity</span>
+<span class="sd">        :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">velocities</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">velocities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span><span class="o">.</span><span class="n">velocities</span><span class="p">()</span>
+        <span class="n">cm</span><span class="p">,</span> <span class="n">inertia</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centerAndMomentOfInertia</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">a</span><span class="o">.</span><span class="n">_mass</span><span class="o">*</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">velocities</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">()),</span>
+                <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">inertia</span><span class="o">.</span><span class="n">inverse</span><span class="p">()</span><span class="o">*</span><span class="n">l</span>
+        </div>
+<div class="viewcode-block" id="GroupOfAtoms.universe"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.universe">[docs]</a>    <span class="k">def</span> <span class="nf">universe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the universe of which the object is part. For an</span>
+<span class="sd">                  object that is not part of a universe, the result is</span>
+<span class="sd">                  None</span>
+<span class="sd">        :rtype: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">atoms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">atoms</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">universe</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">universe</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.charge"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.charge">[docs]</a>    <span class="k">def</span> <span class="nf">charge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the total charge of the object. This is defined only</span>
+<span class="sd">                  for objects that are part of a universe with a force</span>
+<span class="sd">                  field that defines charges.</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span><span class="o">.</span><span class="n">forcefield</span><span class="p">()</span><span class="o">.</span><span class="n">charge</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.dipole"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.dipole">[docs]</a>    <span class="k">def</span> <span class="nf">dipole</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reference</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the total dipole moment of the object. This is defined only</span>
+<span class="sd">                  for objects that are part of a universe with a force field</span>
+<span class="sd">                  that defines charges.</span>
+<span class="sd">        :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span><span class="o">.</span><span class="n">forcefield</span><span class="p">()</span><span class="o">.</span><span class="n">dipole</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reference</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GroupOfAtoms.booleanMask"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.GroupOfAtoms.booleanMask">[docs]</a>    <span class="k">def</span> <span class="nf">booleanMask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a ParticleScalar object that contains a value of 1</span>
+<span class="sd">                  for each atom that is in the object and a value of 0 for all</span>
+<span class="sd">                  other atoms in the universe</span>
+<span class="sd">        :rtype: :class:`~MMTK.ParticleProperties.ParticleScalar`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">universe</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;object not in a universe&quot;</span><span class="p">)</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">universe</span><span class="o">.</span><span class="n">numberOfAtoms</span><span class="p">(),),</span> <span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleScalar</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">array</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">mask</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">mask</span>
+
+<span class="c">#</span>
+<span class="c"># This class defines a general collection that can contain</span>
+<span class="c"># chemical objects and other collections.</span>
+<span class="c">#</span></div></div>
+<div class="viewcode-block" id="Collection"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection">[docs]</a><span class="k">class</span> <span class="nc">Collection</span><span class="p">(</span><span class="n">GroupOfAtoms</span><span class="p">,</span> <span class="n">Visualization</span><span class="o">.</span><span class="n">Viewable</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collection of chemical objects</span>
+
+<span class="sd">    Collections permit the grouping of arbitrary chemical objects</span>
+<span class="sd">    (atoms, molecules, etc.) into one object for the purpose of analysis</span>
+<span class="sd">    or manipulation.</span>
+
+<span class="sd">    Collections permit length inquiry, item extraction by indexing,</span>
+<span class="sd">    and iteration, like any Python sequence object. Two collections</span>
+<span class="sd">    can be added to yield a collection that contains the combined</span>
+<span class="sd">    elements.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">objects</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param objects: a chemical object or a sequence of chemical objects that</span>
+<span class="sd">                        define the initial content of the collection.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objects</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">objects</span><span class="p">)</span>
+
+    <span class="n">is_collection</span> <span class="o">=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="Collection.addObject"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.addObject">[docs]</a>    <span class="k">def</span> <span class="nf">addObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add objects to the collection.</span>
+
+<span class="sd">        :param object: the object(s) to be added. If it is another collection</span>
+<span class="sd">                       or a list, all of its elements are added</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">MMTK.ChemicalObjects</span> <span class="kn">import</span> <span class="n">isChemicalObject</span>
+        <span class="k">if</span> <span class="n">isChemicalObject</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addChemicalObject</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">isCollection</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addChemicalObjectList</span><span class="p">(</span><span class="nb">object</span><span class="o">.</span><span class="n">objectList</span><span class="p">())</span>
+        <span class="k">elif</span> <span class="n">Utility</span><span class="o">.</span><span class="n">isSequenceObject</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">object</span> <span class="ow">and</span> <span class="n">isChemicalObject</span><span class="p">(</span><span class="nb">object</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">addChemicalObjectList</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">object</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">object</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Wrong object type in collection&#39;</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">addChemicalObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">addChemicalObjectList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Collection.removeObject"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.removeObject">[docs]</a>    <span class="k">def</span> <span class="nf">removeObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove an object or a list or collection of objects from the</span>
+<span class="sd">        collection. The object(s) to be removed must be elements of the</span>
+<span class="sd">        collection.</span>
+
+<span class="sd">        :param object: the object to be removed, or a list or collection</span>
+<span class="sd">                       of objects whose elements are to be removed</span>
+<span class="sd">        :raises ValueError: if the object is not an element of the collection</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">MMTK.ChemicalObjects</span> <span class="kn">import</span> <span class="n">isChemicalObject</span>
+        <span class="k">if</span> <span class="n">isChemicalObject</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">removeChemicalObject</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">isCollection</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span> <span class="ow">or</span> <span class="n">Utility</span><span class="o">.</span><span class="n">isSequenceObject</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">object</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">removeObject</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Object not in this collection&#39;</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">removeChemicalObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Object not in this collection&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Collection.selectShell"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.selectShell">[docs]</a>    <span class="k">def</span> <span class="nf">selectShell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">r1</span><span class="p">,</span> <span class="n">r2</span><span class="o">=</span><span class="mf">0.</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Select objects in a spherical shell around a central point.</span>
+
+<span class="sd">        :param point: the center of the spherical shell</span>
+<span class="sd">        :type point: Scientific.Geometry.Vector</span>
+<span class="sd">        :param r1: inner or outer radius of the shell</span>
+<span class="sd">        :type r1: float</span>
+<span class="sd">        :param r2: inner or outer radius of the shell (default: 0.)</span>
+<span class="sd">        :type r2: float</span>
+<span class="sd">        :returns: a collection of all elements whose</span>
+<span class="sd">                  distance from point is between r1 and r2</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">r1</span> <span class="o">&gt;</span> <span class="n">r2</span><span class="p">:</span>
+            <span class="n">r1</span><span class="p">,</span> <span class="n">r2</span> <span class="o">=</span> <span class="n">r2</span><span class="p">,</span> <span class="n">r1</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="n">in_shell</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">o</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+                <span class="n">r</span> <span class="o">=</span>  <span class="n">universe</span><span class="o">.</span><span class="n">distance</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">(),</span> <span class="n">point</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;=</span> <span class="n">r1</span> <span class="ow">and</span> <span class="n">r</span> <span class="o">&lt;=</span> <span class="n">r2</span><span class="p">:</span>
+                    <span class="n">in_shell</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+                    <span class="k">break</span>
+        <span class="k">return</span> <span class="n">Collection</span><span class="p">(</span><span class="n">in_shell</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Collection.selectBox"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.selectBox">[docs]</a>    <span class="k">def</span> <span class="nf">selectBox</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Select objects in a rectangular volume</span>
+
+<span class="sd">        :param p1: one corner of the rectangular volume</span>
+<span class="sd">        :type p1: Scientific.Geometry.Vector</span>
+<span class="sd">        :param p2: the other corner of the rectangular volume</span>
+<span class="sd">        :type p2: Scientific.Geometry.Vector</span>
+<span class="sd">        :returns: a collection of all elements that lie</span>
+<span class="sd">                  within the rectangular volume</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">p2</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">p2</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+        <span class="n">in_box</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">.</span><span class="n">array</span>
+            <span class="k">if</span> <span class="n">N</span><span class="o">.</span><span class="n">logical_and</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span> \
+                <span class="n">N</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">less_equal</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">r</span><span class="p">),</span>
+                              <span class="n">N</span><span class="o">.</span><span class="n">less</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">x2</span><span class="p">))):</span>
+                <span class="n">in_box</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Collection</span><span class="p">(</span><span class="n">in_box</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Collection.objectList"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.objectList">[docs]</a>    <span class="k">def</span> <span class="nf">objectList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make a list of all objects in the collection that are instances</span>
+<span class="sd">        of a specific type or of one of its subtypes.</span>
+
+<span class="sd">        :param type: the type that serves as a filter. If None,</span>
+<span class="sd">                     all objects are returned</span>
+<span class="sd">        :returns: the objects that match the given type</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">type</span><span class="p">)]</span>
+</div>
+<div class="viewcode-block" id="Collection.atomList"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.atomList">[docs]</a>    <span class="k">def</span> <span class="nf">atomList</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a list containing all atoms of all objects in the collection</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">atoms</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objectList</span><span class="p">():</span>
+            <span class="n">atoms</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">atomList</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">atoms</span>
+</div>
+    <span class="k">def</span> <span class="nf">atomIterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">()</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">))</span>
+    
+<div class="viewcode-block" id="Collection.numberOfAtoms"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.numberOfAtoms">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfAtoms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the total number of atoms in the objects of the collection</span>
+<span class="sd">        :rtype: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">numberOfAtoms</span><span class="p">()</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objectList</span><span class="p">())</span>
+    </div>
+<div class="viewcode-block" id="Collection.universe"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.universe">[docs]</a>    <span class="k">def</span> <span class="nf">universe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the universe of which all objects in the collection</span>
+<span class="sd">                  are part. If no such universe exists, the return value</span>
+<span class="sd">                  is None</span>
+<span class="sd">        :rtype: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="k">if</span> <span class="n">o</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">universe</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">universe</span>
+</div>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the number of objects in the collection</span>
+<span class="sd">        :rtype: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param item: an index into the object list</span>
+<span class="sd">        :type item: int</span>
+<span class="sd">        :returns: the object with the given index</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">__iter__</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objectList</span><span class="p">(),</span> <span class="n">other</span><span class="o">.</span><span class="n">objectList</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;Collection of </span><span class="si">%d</span><span class="s"> objects&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Collection.map"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.map">[docs]</a>    <span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply a function to all objects in the collection and</span>
+<span class="sd">        return the list of the results. If the results are chemical</span>
+<span class="sd">        objects, a Collection object is returned instead of a list.</span>
+
+<span class="sd">        :param function: the function to be applied</span>
+<span class="sd">        :type function: callable</span>
+<span class="sd">        :returns: the list or collection of the results</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">MMTK.ChemicalObjects</span> <span class="kn">import</span> <span class="n">isChemicalObject</span>
+        <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">function</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objectList</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="nb">list</span> <span class="ow">and</span> <span class="n">isChemicalObject</span><span class="p">(</span><span class="nb">list</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">return</span> <span class="n">Collection</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span>
+</div>
+    <span class="k">def</span> <span class="nf">bondedUnits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">bu</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">bu</span> <span class="o">=</span> <span class="n">bu</span> <span class="o">+</span> <span class="n">o</span><span class="o">.</span><span class="n">bondedUnits</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">bu</span>
+
+    <span class="k">def</span> <span class="nf">degreesOfFreedom</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">GroupOfAtoms</span><span class="o">.</span><span class="n">degreesOfFreedom</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> \
+               <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">numberOfDistanceConstraints</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Collection.distanceConstraintList"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.distanceConstraintList">[docs]</a>    <span class="k">def</span> <span class="nf">distanceConstraintList</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the list of distance constraints</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dc</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">dc</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">distanceConstraintList</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">dc</span>
+</div>
+<div class="viewcode-block" id="Collection.numberOfDistanceConstraints"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.numberOfDistanceConstraints">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfDistanceConstraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the number of distance constraints</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">numberOfDistanceConstraints</span><span class="p">()</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Collection.setBondConstraints"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.setBondConstraints">[docs]</a>    <span class="k">def</span> <span class="nf">setBondConstraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set distance constraints for all bonds</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">universe</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">o</span><span class="o">.</span><span class="n">setBondConstraints</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Collection.removeDistanceConstraints"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.Collection.removeDistanceConstraints">[docs]</a>    <span class="k">def</span> <span class="nf">removeDistanceConstraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove all distance constraints</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">universe</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">o</span><span class="o">.</span><span class="n">removeDistanceConstraints</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_graphics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">distance_fn</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+        <span class="n">gobs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">gobs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">_graphics</span><span class="p">(</span><span class="n">conf</span><span class="p">,</span> <span class="n">distance_fn</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+                                    <span class="n">module</span><span class="p">,</span> <span class="n">options</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">gobs</span>
+
+    <span class="k">def</span> <span class="nf">__copy__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">))</span>
+
+
+<span class="c"># type check for collections</span>
+</div>
+<div class="viewcode-block" id="isCollection"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.isCollection">[docs]</a><span class="k">def</span> <span class="nf">isCollection</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param object: any Python object</span>
+<span class="sd">    :returns: True if the object is a :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="s">&#39;is_collection&#39;</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># This class defines a partitioned collection. Such collections</span>
+<span class="c"># divide their objects into cubic boxes according to their positions.</span>
+<span class="c"># It is then possible to find potential neighbours much more efficiently.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="PartitionedCollection"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.PartitionedCollection">[docs]</a><span class="k">class</span> <span class="nc">PartitionedCollection</span><span class="p">(</span><span class="n">Collection</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collection with cubic partitions</span>
+
+<span class="sd">    A PartitionedCollection differs from a plain Collection by</span>
+<span class="sd">    sorting its elements into small cubic cells. This makes adding</span>
+<span class="sd">    objects slower, but geometrical operations like </span>
+<span class="sd">    selectShell become much faster for a large number of</span>
+<span class="sd">    objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">,</span> <span class="o">*</span><span class="n">objects</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param partition_size: the edge length of the cubic cells</span>
+<span class="sd">        :param objects: a chemical object or a sequence of chemical objects that</span>
+<span class="sd">                        define the initial content of the collection.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">*</span><span class="n">partition_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">undefined</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">partition</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">objects</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">addChemicalObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">p</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">undefined</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partitionIndex</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">partition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">partition</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">partition</span>
+            <span class="n">partition</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">addChemicalObjectList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="nb">object</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addChemicalObject</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">removeChemicalObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">p</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">undefined</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partitionIndex</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">partition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Object not in this collection&#39;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">partition</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Object not in this collection&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">partitionIndex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">)),</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">)),</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">objectList</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">undefined</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> \
+               <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">undefined</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">all</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">all</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objectList</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">item</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">all</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">all</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__copy__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">,</span>
+                              <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objectList</span><span class="p">()))</span>
+
+<div class="viewcode-block" id="PartitionedCollection.partitions"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.PartitionedCollection.partitions">[docs]</a>    <span class="k">def</span> <span class="nf">partitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a list of cubic partitions. Each partition is specified</span>
+<span class="sd">                  by a tuple containing two vectors (describing the diagonally</span>
+<span class="sd">                  opposite corners) and the list of objects in the partition.</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">objects</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">min</span> <span class="o">=</span> <span class="n">Vector</span><span class="p">(</span><span class="n">index</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span>
+            <span class="nb">max</span> <span class="o">=</span> <span class="nb">min</span> <span class="o">+</span> <span class="n">Vector</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">])</span>
+            <span class="nb">list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">,</span> <span class="n">objects</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">list</span>
+</div>
+    <span class="k">def</span> <span class="nf">selectCube</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">edge</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">))</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">))</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">))</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="o">-</span><span class="n">point</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="n">edge</span> <span class="o">+</span> <span class="n">d</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">)))</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">nx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">ny</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">nz</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[(</span><span class="n">nx</span><span class="o">+</span><span class="n">x</span><span class="p">,</span> <span class="n">ny</span><span class="o">+</span><span class="n">y</span><span class="p">,</span> <span class="n">nz</span><span class="o">+</span><span class="n">z</span><span class="p">)])</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">Collection</span><span class="p">(</span><span class="n">objects</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">selectShell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">min</span> <span class="o">&gt;</span> <span class="nb">max</span><span class="p">:</span>
+            <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">,</span> <span class="nb">min</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="n">Collection</span><span class="p">()</span>
+        <span class="n">minsq</span> <span class="o">=</span> <span class="nb">min</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">maxsq</span> <span class="o">=</span> <span class="nb">max</span><span class="o">**</span><span class="mi">2</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">d1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="o">-</span> <span class="n">point</span><span class="o">.</span><span class="n">array</span>
+            <span class="n">d2</span> <span class="o">=</span> <span class="n">d1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span>
+            <span class="n">dmin</span> <span class="o">=</span> <span class="p">(</span><span class="n">d1</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">)</span><span class="o">*</span><span class="n">d1</span> <span class="o">-</span> <span class="p">(</span><span class="n">d2</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">)</span><span class="o">*</span><span class="n">d2</span>
+            <span class="n">dminsq</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">dmin</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">dmaxsq</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">d1</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">d2</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">dminsq</span> <span class="o">&gt;=</span> <span class="n">minsq</span> <span class="ow">and</span> <span class="n">dmaxsq</span> <span class="o">&lt;=</span> <span class="n">maxsq</span><span class="p">:</span>
+                <span class="n">objects</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+            <span class="k">elif</span> <span class="n">dmaxsq</span> <span class="o">&gt;=</span> <span class="n">minsq</span> <span class="ow">and</span> <span class="n">dminsq</span> <span class="o">&lt;=</span> <span class="n">maxsq</span><span class="p">:</span>
+                <span class="n">o</span> <span class="o">=</span> <span class="n">Collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="n">index</span><span class="p">])</span><span class="o">.</span><span class="n">selectShell</span><span class="p">(</span><span class="n">point</span><span class="p">,</span>
+                                                                  <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">)</span>
+                <span class="n">objects</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">objects</span>
+
+<div class="viewcode-block" id="PartitionedCollection.pairsWithinCutoff"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.PartitionedCollection.pairsWithinCutoff">[docs]</a>    <span class="k">def</span> <span class="nf">pairsWithinCutoff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param cutoff: a cutoff for pair distances</span>
+<span class="sd">        :returns: a list containing all pairs of objects in the</span>
+<span class="sd">                  collection whose center-of-mass distance is less than</span>
+<span class="sd">                  the cutoff</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pairs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">positions</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">objects</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">o</span><span class="p">:</span> <span class="n">o</span><span class="o">.</span><span class="n">position</span><span class="p">(),</span> <span class="n">objects</span><span class="p">)</span>
+            <span class="n">positions</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">pos</span>
+            <span class="k">for</span> <span class="n">o1</span><span class="p">,</span> <span class="n">o2</span> <span class="ow">in</span> <span class="n">Utility</span><span class="o">.</span><span class="n">pairs</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">objects</span><span class="p">,</span> <span class="n">pos</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">o2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">o1</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">cutoff</span><span class="p">:</span>
+                    <span class="n">pairs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">o1</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">o2</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">partition_cutoff</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">floor</span><span class="p">((</span><span class="n">cutoff</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_size</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">ones</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">zeros</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)):</span>
+            <span class="n">p1</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)):</span>
+                <span class="n">p2</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">p2</span><span class="p">)</span><span class="o">-</span><span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">p1</span><span class="p">))</span> <span class="o">-</span>
+                              <span class="n">ones</span><span class="p">,</span> <span class="n">zeros</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">d</span><span class="o">*</span><span class="n">d</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">partition_cutoff</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">o1</span><span class="p">,</span> <span class="n">pos1</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="n">p1</span><span class="p">],</span>
+                                        <span class="n">positions</span><span class="p">[</span><span class="n">p1</span><span class="p">]):</span>
+                        <span class="k">for</span> <span class="n">o2</span><span class="p">,</span> <span class="n">pos2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="n">p2</span><span class="p">],</span>
+                                            <span class="n">positions</span><span class="p">[</span><span class="n">p2</span><span class="p">]):</span>
+                            <span class="k">if</span> <span class="p">(</span><span class="n">pos2</span><span class="o">-</span><span class="n">pos1</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">cutoff</span><span class="p">:</span>
+                                <span class="n">pairs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">o1</span><span class="p">,</span> <span class="n">o2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">pairs</span>
+
+<span class="c">#</span>
+<span class="c"># A special form of partitioned collection that stores the atoms</span>
+<span class="c"># of all objects that are added to it.</span>
+<span class="c">#</span></div></div>
+<div class="viewcode-block" id="PartitionedAtomCollection"><a class="viewcode-back" href="../../modules.html#MMTK.Collections.PartitionedAtomCollection">[docs]</a><span class="k">class</span> <span class="nc">PartitionedAtomCollection</span><span class="p">(</span><span class="n">PartitionedCollection</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Partitioned collection of atoms</span>
+
+<span class="sd">    PartitionedAtomCollection objects behave like PartitionedCollection</span>
+<span class="sd">    atoms, except that they store only atoms. When a composite chemical</span>
+<span class="sd">    object is added, its atoms are stored instead.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="nb">apply</span><span class="p">(</span><span class="n">PartitionedCollection</span><span class="o">.</span><span class="n">__init__</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">addChemicalObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="nb">object</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">PartitionedCollection</span><span class="o">.</span><span class="n">addChemicalObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">removeChemicalObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="nb">object</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+            <span class="n">PartitionedCollection</span><span class="o">.</span><span class="n">removeChemicalObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

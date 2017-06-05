@@ -1,0 +1,777 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.PDB &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.PDB</h1><div class="highlight"><pre>
+<span class="c"># This module deals with input and output of configurations in PDB format.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">PDB files</span>
+
+<span class="sd">This module provides classes that represent molecules in a PDB file.</span>
+<span class="sd">They permit various manipulations and the creation of MMTK objects.</span>
+<span class="sd">Note that the classes defined in this module are specializations</span>
+<span class="sd">of classed defined in Scientific.IO.PDB; the methods defined in</span>
+<span class="sd">that module are also available.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">ChemicalObjects</span><span class="p">,</span> <span class="n">Collections</span><span class="p">,</span> <span class="n">Database</span><span class="p">,</span> <span class="n">Units</span><span class="p">,</span> \
+                 <span class="n">Universe</span><span class="p">,</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span>
+<span class="kn">import</span> <span class="nn">Scientific.IO.PDB</span>
+<span class="kn">import</span> <span class="nn">copy</span><span class="o">,</span> <span class="nn">string</span>
+
+<span class="c">#</span>
+<span class="c"># The chain classes from Scientific.IO.PDB are extended by methods</span>
+<span class="c"># that construct MMTK objects and set configurations.</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">PDBChain</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">applyTo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chain</span><span class="p">,</span> <span class="nb">map</span> <span class="o">=</span> <span class="s">&#39;pdbmap&#39;</span><span class="p">,</span> <span class="n">alt</span> <span class="o">=</span> <span class="s">&#39;pdb_alternative&#39;</span><span class="p">,</span>
+                <span class="n">atom_map</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">chain</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;chain lengths do not match&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">chain</span><span class="p">)):</span>
+            <span class="n">residue</span> <span class="o">=</span> <span class="n">chain</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">pdbmap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">residue</span><span class="p">,</span> <span class="nb">map</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span> <span class="n">altmap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">residue</span><span class="p">,</span> <span class="n">alt</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> <span class="n">altmap</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">setResidueConfiguration</span><span class="p">(</span><span class="n">residue</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">pdbmap</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">altmap</span><span class="p">,</span>
+                                    <span class="n">atom_map</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="PDBPeptideChain"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBPeptideChain">[docs]</a><span class="k">class</span> <span class="nc">PDBPeptideChain</span><span class="p">(</span><span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">PeptideChain</span><span class="p">,</span> <span class="n">PDBChain</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Peptide chain in a PDB file</span>
+
+<span class="sd">    See the description of Scientific.IO.PDB.PeptideChain for the</span>
+<span class="sd">    constructor and additional methods. In MMTK, PDBPeptideChain</span>
+<span class="sd">    objects are usually obtained from a PDBConfiguration object via</span>
+<span class="sd">    its attribute peptide_chains (see the documentation of</span>
+<span class="sd">    Scientific.IO.PDB.Structure).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PDBPeptideChain.createPeptideChain"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBPeptideChain.createPeptideChain">[docs]</a>    <span class="k">def</span> <span class="nf">createPeptideChain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="s">&#39;all&#39;</span><span class="p">,</span>
+                           <span class="n">n_terminus</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">c_terminus</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a :class:`~MMTK.Proteins.PeptideChain` object corresponding to the</span>
+<span class="sd">                  peptide chain in the PDB file. The parameter model</span>
+<span class="sd">                  has the same meaning as for the PeptideChain constructor.</span>
+<span class="sd">        :rtype: :class:`~MMTK.Proteins.PeptideChain`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">identifyProtonation</span><span class="p">()</span>
+        <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Proteins</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;model&#39;</span><span class="p">:</span> <span class="n">model</span><span class="p">}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_id</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_id</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain_id</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain_id</span>
+        <span class="k">if</span> <span class="n">c_terminus</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s">&#39;c_terminus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">isTerminated</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s">&#39;c_terminus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_terminus</span>
+        <span class="k">if</span> <span class="n">n_terminus</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s">&#39;n_terminus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n_terminus</span>
+        <span class="n">chain</span> <span class="o">=</span> <span class="nb">apply</span><span class="p">(</span><span class="n">Proteins</span><span class="o">.</span><span class="n">PeptideChain</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,),</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="o">!=</span> <span class="s">&#39;no_hydrogens&#39;</span><span class="p">:</span>
+            <span class="n">chain</span><span class="o">.</span><span class="n">findHydrogenPositions</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">chain</span>
+</div>
+    <span class="k">def</span> <span class="nf">identifyProtonation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;HIS&#39;</span><span class="p">:</span>
+                <span class="n">count_hd</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">count_he</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">residue</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s">&#39;HD&#39;</span> <span class="ow">in</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                        <span class="n">count_hd</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="s">&#39;HE&#39;</span> <span class="ow">in</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                        <span class="n">count_he</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">count_hd</span> <span class="o">+</span> <span class="n">count_he</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c"># default for crystallographic structures without hydrogens</span>
+                    <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;HIE&#39;</span>
+                <span class="k">elif</span> <span class="n">count_he</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">count_hd</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;HIP&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;HIE&#39;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;HID&#39;</span>
+            <span class="k">elif</span> <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;GLU&#39;</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">residue</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s">&#39;HE&#39;</span> <span class="ow">in</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                        <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;GLP&#39;</span>
+                        <span class="k">break</span>
+            <span class="k">elif</span> <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;ASP&#39;</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">residue</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s">&#39;HD&#39;</span> <span class="ow">in</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                        <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;APP&#39;</span>
+                        <span class="k">break</span>
+            <span class="k">elif</span> <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;LYS&#39;</span><span class="p">:</span>
+                <span class="n">count_hz</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">residue</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s">&#39;HZ&#39;</span> <span class="ow">in</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                        <span class="n">count_hz</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">count_hz</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">count_hz</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="c"># for count_hz == 0 (most probably a crystallographic</span>
+                    <span class="c"># structure), keep LYS which is the most frequent one.</span>
+                    <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;LYP&#39;</span>
+</div>
+<div class="viewcode-block" id="PDBNucleotideChain"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBNucleotideChain">[docs]</a><span class="k">class</span> <span class="nc">PDBNucleotideChain</span><span class="p">(</span><span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">NucleotideChain</span><span class="p">,</span> <span class="n">PDBChain</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Nucleotide chain in a PDB file</span>
+
+<span class="sd">    See the description of Scientific.IO.PDB.NucleotideChain for the</span>
+<span class="sd">    constructor and additional methods. In MMTK, PDBNucleotideChain</span>
+<span class="sd">    objects are usually obtained from a PDBConfiguration object via</span>
+<span class="sd">    its attribute nucleotide_chains (see the documentation of</span>
+<span class="sd">    Scientific.IO.PDB.Structure).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PDBNucleotideChain.createNucleotideChain"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBNucleotideChain.createNucleotideChain">[docs]</a>    <span class="k">def</span> <span class="nf">createNucleotideChain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s">&#39;all&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a :class:`~MMTK.NucleicAcids.NucleotideChain` object corresponding </span>
+<span class="sd">                  to the nucleotide chain in the PDB file. The parameter model</span>
+<span class="sd">                  has the same meaning as for the NucleotideChain constructor.</span>
+<span class="sd">        :rtype: :class:`~MMTK.NucleicAcids.NucleotideChain`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">NucleicAcids</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;model&#39;</span><span class="p">:</span> <span class="n">model</span><span class="p">}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_id</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_id</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain_id</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain_id</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">hasPhosphate</span><span class="p">():</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s">&#39;terminus_5&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">chain</span> <span class="o">=</span> <span class="nb">apply</span><span class="p">(</span><span class="n">NucleicAcids</span><span class="o">.</span><span class="n">NucleotideChain</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,),</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="o">!=</span> <span class="s">&#39;no_hydrogens&#39;</span><span class="p">:</span>
+            <span class="n">chain</span><span class="o">.</span><span class="n">findHydrogenPositions</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">chain</span>
+</div></div>
+<div class="viewcode-block" id="PDBMolecule"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBMolecule">[docs]</a><span class="k">class</span> <span class="nc">PDBMolecule</span><span class="p">(</span><span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">Molecule</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Molecule in a PDB file</span>
+
+<span class="sd">    See the description of Scientific.IO.PDB.Molecule for the</span>
+<span class="sd">    constructor and additional methods. In MMTK, PDBMolecule objects</span>
+<span class="sd">    are usually obtained from a PDBConfiguration object via its</span>
+<span class="sd">    attribute molecules (see the documentation of</span>
+<span class="sd">    Scientific.IO.PDB.Structure). A molecule is by definition any</span>
+<span class="sd">    residue in a PDB file that is not an amino acid or nucleotide</span>
+<span class="sd">    residue.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">applyTo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">molecule</span><span class="p">,</span> <span class="nb">map</span> <span class="o">=</span> <span class="s">&#39;pdbmap&#39;</span><span class="p">,</span> <span class="n">alt</span> <span class="o">=</span> <span class="s">&#39;pdb_alternative&#39;</span><span class="p">,</span>
+                <span class="n">atom_map</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="n">pdbmap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">molecule</span><span class="p">,</span> <span class="nb">map</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span> <span class="n">altmap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">molecule</span><span class="p">,</span> <span class="n">alt</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> <span class="n">altmap</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">setResidueConfiguration</span><span class="p">(</span><span class="n">molecule</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">pdbmap</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">altmap</span><span class="p">,</span> <span class="n">atom_map</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PDBMolecule.createMolecule"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBMolecule.createMolecule">[docs]</a>    <span class="k">def</span> <span class="nf">createMolecule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a :class:`~MMTK.ChemicalObjects.Molecule` object corresponding </span>
+<span class="sd">                  to the molecule in the PDB file. The parameter name </span>
+<span class="sd">                  specifies the molecule name as defined in the chemical database.</span>
+<span class="sd">                  It can be left out for known molecules (currently</span>
+<span class="sd">                  only water).</span>
+<span class="sd">        :rtype: :class:`~MMTK.ChemicalObjects.Molecule`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">molecule_names</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Molecule</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">setConfiguration</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">m</span>
+
+<span class="c">#</span>
+<span class="c"># The structure class from Scientific.IO.PDB is extended by methods</span>
+<span class="c"># that construct MMTK objects and set configurations.</span>
+<span class="c">#</span></div></div>
+<div class="viewcode-block" id="PDBConfiguration"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBConfiguration">[docs]</a><span class="k">class</span> <span class="nc">PDBConfiguration</span><span class="p">(</span><span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Everything in a PDB file</span>
+
+<span class="sd">    A PDBConfiguration object represents the full contents of a PDB</span>
+<span class="sd">    file. It can be used to create MMTK objects for all or part</span>
+<span class="sd">    of the molecules, or to change the configuration of an existing</span>
+<span class="sd">    system.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_or_filename</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">alternate_code</span> <span class="o">=</span> <span class="s">&#39;A&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param file_or_filename: the name of a PDB file, or a file object</span>
+<span class="sd">        :param model: the number of the model to be used from a</span>
+<span class="sd">                      multiple model file</span>
+<span class="sd">        :type model: int</span>
+<span class="sd">        :param alternate_code: the alternate code to be used for atoms that</span>
+<span class="sd">                               have multiple positions</span>
+<span class="sd">        :type alternate_code: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file_or_filename</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+            <span class="n">file_or_filename</span> <span class="o">=</span> <span class="n">Database</span><span class="o">.</span><span class="n">PDBPath</span><span class="p">(</span><span class="n">file_or_filename</span><span class="p">)</span>
+        <span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">Structure</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_or_filename</span><span class="p">,</span>
+                                             <span class="n">model</span><span class="p">,</span> <span class="n">alternate_code</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_numberAtoms</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_convertUnits</span><span class="p">()</span>
+
+    <span class="n">peptide_chain_constructor</span> <span class="o">=</span> <span class="n">PDBPeptideChain</span>
+    <span class="n">nucleotide_chain_constructor</span> <span class="o">=</span> <span class="n">PDBNucleotideChain</span>
+    <span class="n">molecule_constructor</span> <span class="o">=</span> <span class="n">PDBMolecule</span>
+
+    <span class="k">def</span> <span class="nf">_numberAtoms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">residue</span><span class="p">:</span>
+                <span class="n">atom</span><span class="o">.</span><span class="n">number</span> <span class="o">=</span> <span class="n">n</span>
+                <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_convertUnits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">residue</span><span class="p">:</span>
+                <span class="n">atom</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">b</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;temperature_factor&#39;</span><span class="p">]</span>
+                    <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;temperature_factor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">b</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="o">**</span><span class="mi">2</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">u</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;u&#39;</span><span class="p">]</span>
+                    <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;u&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="o">**</span><span class="mi">2</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+        <span class="c"># All these attributes exist only if ScientificPython &gt;= 2.7.5 is used.</span>
+        <span class="c"># The Scaling transformation was introduced with the same version,</span>
+        <span class="c"># so if it exists, the rest should work as well.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">Scientific.Geometry.Transformation</span> <span class="kn">import</span> <span class="n">Scaling</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;a&#39;</span><span class="p">,</span> <span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="s">&#39;c&#39;</span><span class="p">]:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">value</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;alpha&#39;</span><span class="p">,</span> <span class="s">&#39;beta&#39;</span><span class="p">,</span> <span class="s">&#39;gamma&#39;</span><span class="p">]:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">value</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">deg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_fractional</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">to_fractional</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_fractional</span><span class="o">*</span><span class="n">Scaling</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span>
+            <span class="n">v1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+            <span class="n">v2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+            <span class="n">v3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reciprocal_basis</span> <span class="o">=</span> <span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="n">v1</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">v2</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">v3</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                                     <span class="n">Vector</span><span class="p">(</span><span class="n">v1</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">v2</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">v3</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                                     <span class="n">Vector</span><span class="p">(</span><span class="n">v1</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">v2</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">v3</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reciprocal_basis</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span> <span class="o">=</span> <span class="n">Scaling</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">basis</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)),</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)),</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">basis</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncs_transformations</span><span class="p">)):</span>
+            <span class="n">tr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncs_transformations</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">tr_new</span> <span class="o">=</span> <span class="n">Scaling</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span><span class="o">*</span><span class="n">tr</span><span class="o">*</span><span class="n">Scaling</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span>
+            <span class="n">tr_new</span><span class="o">.</span><span class="n">given</span> <span class="o">=</span> <span class="n">tr</span><span class="o">.</span><span class="n">given</span>
+            <span class="n">tr_new</span><span class="o">.</span><span class="n">serial</span> <span class="o">=</span> <span class="n">tr</span><span class="o">.</span><span class="n">serial</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ncs_transformations</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">tr_new</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cs_transformations</span><span class="p">)):</span>
+            <span class="n">tr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cs_transformations</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">tr_new</span> <span class="o">=</span> <span class="n">Scaling</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span><span class="o">*</span><span class="n">tr</span><span class="o">*</span><span class="n">Scaling</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cs_transformations</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">tr_new</span>
+
+<div class="viewcode-block" id="PDBConfiguration.createUnitCellUniverse"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBConfiguration.createUnitCellUniverse">[docs]</a>    <span class="k">def</span> <span class="nf">createUnitCellUniverse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructs an empty universe (OrthrhombicPeriodicUniverse or</span>
+<span class="sd">        ParallelepipedicPeriodicUniverse) representing the</span>
+<span class="sd">        unit cell of the crystal. If the PDB file does not define</span>
+<span class="sd">        a unit cell at all, an InfiniteUniverse is returned.</span>
+<span class="sd">        </span>
+<span class="sd">        :returns: a universe</span>
+<span class="sd">        :rtype: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Universe</span><span class="o">.</span><span class="n">InfiniteUniverse</span><span class="p">()</span>
+        <span class="n">e1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+        <span class="n">e2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">))</span>
+        <span class="n">e3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">e1</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.e-15</span> \
+               <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">e2</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.e-15</span> \
+               <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">e3</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.e-15</span><span class="p">:</span>
+            <span class="k">return</span> \
+               <span class="n">Universe</span><span class="o">.</span><span class="n">OrthorhombicPeriodicUniverse</span><span class="p">((</span><span class="n">e1</span><span class="o">.</span><span class="n">length</span><span class="p">(),</span>
+                                                      <span class="n">e2</span><span class="o">.</span><span class="n">length</span><span class="p">(),</span>
+                                                      <span class="n">e3</span><span class="o">.</span><span class="n">length</span><span class="p">()))</span>
+        <span class="k">return</span> <span class="n">Universe</span><span class="o">.</span><span class="n">ParallelepipedicPeriodicUniverse</span><span class="p">((</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">e3</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="PDBConfiguration.createPeptideChains"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBConfiguration.createPeptideChains">[docs]</a>    <span class="k">def</span> <span class="nf">createPeptideChains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s">&#39;all&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a list of :class:`~MMTK.Proteins.PeptideChain` objects, one for each</span>
+<span class="sd">                  peptide chain in the PDB file. The parameter model</span>
+<span class="sd">                  has the same meaning as for the PeptideChain constructor.</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">chain</span><span class="o">.</span><span class="n">createPeptideChain</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">peptide_chains</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="PDBConfiguration.createNucleotideChains"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBConfiguration.createNucleotideChains">[docs]</a>    <span class="k">def</span> <span class="nf">createNucleotideChains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s">&#39;all&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a list of :class:`~MMTK.NucleicAcids.NucleotideChain` objects, one for each</span>
+<span class="sd">                  nucleotide chain in the PDB file. The parameter model</span>
+<span class="sd">                  has the same meaning as for the NucleotideChain constructor.</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">chain</span><span class="o">.</span><span class="n">createNucleotideChain</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nucleotide_chains</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="PDBConfiguration.createMolecules"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBConfiguration.createMolecules">[docs]</a>    <span class="k">def</span> <span class="nf">createMolecules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">permit_undefined</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param names: If a list of molecule names (as defined in the</span>
+<span class="sd">                      chemical database) and/or PDB residue names,</span>
+<span class="sd">                      only molecules mentioned in this list will be</span>
+<span class="sd">                      constructed. If a dictionary, it is used to map</span>
+<span class="sd">                      PDB residue names to molecule names. With the</span>
+<span class="sd">                      default (None), only water molecules are</span>
+<span class="sd">                      built.</span>
+<span class="sd">        :type names: list</span>
+<span class="sd">        :param permit_undefined: If False, an exception is raised</span>
+<span class="sd">                                 when a PDB residue is encountered for</span>
+<span class="sd">                                 which no molecule name is supplied</span>
+<span class="sd">                                 in names. If True, an AtomCluster</span>
+<span class="sd">                                 object is constructed for each unknown</span>
+<span class="sd">                                 molecule.</span>
+<span class="sd">        :returns: a collection of :class:`~MMTK.ChemicalObjects.Molecule` objects,</span>
+<span class="sd">                  one for each molecule in the PDB file. Each PDB residue not </span>
+<span class="sd">                  describing an amino acid or nucleotide residue is considered a</span>
+<span class="sd">                  molecule.</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">collection</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="n">Collection</span><span class="p">()</span>
+        <span class="n">mol_dicts</span> <span class="o">=</span> <span class="p">[</span><span class="n">molecule_names</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">({}):</span>
+            <span class="n">mol_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecules</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">full_name</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">for</span> <span class="nb">dict</span> <span class="ow">in</span> <span class="n">mol_dicts</span><span class="p">:</span>
+                <span class="n">full_name</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">names</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="ow">or</span> <span class="n">full_name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">full_name</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">permit_undefined</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;no definition for molecule &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecules</span><span class="p">[</span><span class="n">name</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">full_name</span><span class="p">:</span>
+                        <span class="n">m</span> <span class="o">=</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Molecule</span><span class="p">(</span><span class="n">full_name</span><span class="p">)</span>
+                        <span class="n">setConfiguration</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="p">[</span><span class="n">molecule</span><span class="p">])</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">pdbdict</span> <span class="o">=</span> <span class="p">{}</span>
+                        <span class="n">atoms</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">molecule</span><span class="p">:</span>
+                            <span class="n">aname</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span>
+                            <span class="k">while</span> <span class="n">aname</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">digits</span><span class="p">:</span>
+                                <span class="n">aname</span> <span class="o">=</span> <span class="n">aname</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">aname</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="n">element</span> <span class="o">=</span> <span class="n">atom</span><span class="p">[</span><span class="s">&#39;element&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                                <span class="n">a</span> <span class="o">=</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Atom</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">aname</span><span class="p">)</span>
+                            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                                <span class="k">try</span><span class="p">:</span>
+                                    <span class="n">a</span> <span class="o">=</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Atom</span><span class="p">(</span><span class="n">aname</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+                                                             <span class="n">name</span> <span class="o">=</span> <span class="n">aname</span><span class="p">)</span>
+                                <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+                                    <span class="n">a</span> <span class="o">=</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Atom</span><span class="p">(</span><span class="n">aname</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span>
+                                                             <span class="n">name</span> <span class="o">=</span> <span class="n">aname</span><span class="p">)</span>
+                            <span class="n">a</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+                            <span class="n">atoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                            <span class="n">pdbdict</span><span class="p">[</span><span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Database</span><span class="o">.</span><span class="n">AtomReference</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">m</span> <span class="o">=</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">AtomCluster</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pdbdict</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">molecule</span><span class="p">):</span>
+                            <span class="c"># pdbmap is correct only if the AtomCluster has</span>
+                            <span class="c"># unique atom names</span>
+                            <span class="n">m</span><span class="o">.</span><span class="n">pdbmap</span> <span class="o">=</span> <span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="n">pdbdict</span><span class="p">)]</span>
+                        <span class="n">setConfiguration</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="p">[</span><span class="n">molecule</span><span class="p">])</span>
+                    <span class="n">collection</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">collection</span>
+</div>
+    <span class="k">def</span> <span class="nf">createGroups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="n">groups</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecules</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">full_name</span> <span class="o">=</span> <span class="n">mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">full_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecules</span><span class="p">[</span><span class="n">name</span><span class="p">]:</span>
+                    <span class="n">g</span> <span class="o">=</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Group</span><span class="p">(</span><span class="n">full_name</span><span class="p">)</span>
+                    <span class="n">setConfiguration</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="p">[</span><span class="n">molecule</span><span class="p">],</span> <span class="n">toplevel</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="n">groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">groups</span>
+
+<div class="viewcode-block" id="PDBConfiguration.createAll"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBConfiguration.createAll">[docs]</a>    <span class="k">def</span> <span class="nf">createAll</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">molecule_names</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">permit_undefined</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a collection containing all objects contained in the</span>
+<span class="sd">                  PDB file, i.e. the combination of the objects</span>
+<span class="sd">                  returned by :func:`~MMTK.PDB.PDBConfiguration.createPeptideChains`,</span>
+<span class="sd">                  :func:`~MMTK.PDB.PDBConfiguration.createNucleotideChains`,</span>
+<span class="sd">                  and :func:`~MMTK.PDB.PDBConfiguration.createMolecules`.</span>
+<span class="sd">                  The parameters have the same meaning as for</span>
+<span class="sd">                  :func:`~MMTK.PDB.PDBConfiguration.createMolecules`.</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collectionc.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">collection</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="n">Collection</span><span class="p">()</span>
+        <span class="n">peptide_chains</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">createPeptideChains</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">peptide_chains</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">Proteins</span>
+            <span class="n">collection</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">Proteins</span><span class="o">.</span><span class="n">Protein</span><span class="p">(</span><span class="n">peptide_chains</span><span class="p">))</span>
+        <span class="n">nucleotide_chains</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">createNucleotideChains</span><span class="p">()</span>
+        <span class="n">collection</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">nucleotide_chains</span><span class="p">)</span>
+        <span class="n">molecules</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">createMolecules</span><span class="p">(</span><span class="n">molecule_names</span><span class="p">,</span> <span class="n">permit_undefined</span><span class="p">)</span>
+        <span class="n">collection</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">molecules</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">collection</span>
+</div>
+<div class="viewcode-block" id="PDBConfiguration.asuToUnitCell"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBConfiguration.asuToUnitCell">[docs]</a>    <span class="k">def</span> <span class="nf">asuToUnitCell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">asu_contents</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param asu_contents: the molecules in the asymmetric unit, usually</span>
+<span class="sd">                             obtained from :func:`~MMTK.PDB.PDBConfiguration.createAll()`.</span>
+<span class="sd">        :param compact: if True, all molecules images are shifted such that</span>
+<span class="sd">                        their centers of mass lie inside the unit cell.</span>
+<span class="sd">        :type compact: bool</span>
+<span class="sd">        :returns: a collection containing all molecules in the unit cell,</span>
+<span class="sd">                  obtained by copying and moving the molecules from the</span>
+<span class="sd">                  asymmetric unit according to the crystallographic</span>
+<span class="sd">                  symmetry operations.</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">unit_cell_contents</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="n">Collection</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">symop</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cs_transformations</span><span class="p">:</span>
+            <span class="n">transformation</span> <span class="o">=</span> <span class="n">symop</span><span class="o">.</span><span class="n">asLinearTransformation</span><span class="p">()</span>
+            <span class="n">rotation</span> <span class="o">=</span> <span class="n">transformation</span><span class="o">.</span><span class="n">tensor</span>
+            <span class="n">translation</span> <span class="o">=</span> <span class="n">transformation</span><span class="o">.</span><span class="n">vector</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">asu_contents</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">image</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+                <span class="n">atom</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">symop</span><span class="p">(</span><span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">()))</span>
+            <span class="k">if</span> <span class="n">compact</span><span class="p">:</span>
+                <span class="n">cm</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">centerOfMass</span><span class="p">()</span>
+                <span class="n">cm_fr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_fractional</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+                <span class="n">cm_fr</span> <span class="o">=</span> <span class="n">Vector</span><span class="p">(</span><span class="n">cm_fr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mf">1.</span><span class="p">,</span> <span class="n">cm_fr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mf">1.</span><span class="p">,</span> <span class="n">cm_fr</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">%</span> <span class="mf">1.</span><span class="p">)</span> \
+                        <span class="o">-</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+                <span class="n">cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_fractional</span><span class="p">(</span><span class="n">cm_fr</span><span class="p">)</span>
+                <span class="n">image</span><span class="o">.</span><span class="n">translateTo</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+            <span class="n">unit_cell_contents</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">unit_cell_contents</span>
+</div>
+<div class="viewcode-block" id="PDBConfiguration.applyTo"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBConfiguration.applyTo">[docs]</a>    <span class="k">def</span> <span class="nf">applyTo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">,</span> <span class="n">atom_map</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the configuration of object from the coordinates in the</span>
+<span class="sd">        PDB file. The object must be compatible with the PDB file, i.e.</span>
+<span class="sd">        contain the same subobjects and in the same order. This is usually</span>
+<span class="sd">        only guaranteed if the object was created by the method</span>
+
+<span class="sd">        :func:`~MMTK.PDB.PDBConfiguration.createAll` from a PDB file with the same layout.</span>
+<span class="sd">        :param object: a chemical object or collection of chemical objects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">setConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">residues</span><span class="p">,</span> <span class="n">atom_map</span><span class="o">=</span><span class="n">atom_map</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># An alternative name for compatibility in Database files.</span>
+<span class="c">#</span></div></div>
+<span class="n">PDBFile</span> <span class="o">=</span> <span class="n">PDBConfiguration</span>
+
+<span class="c">#</span>
+<span class="c"># Set atom coordinates from PDB configuration.</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">setResidueConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">pdb_residue</span><span class="p">,</span> <span class="n">pdbmap</span><span class="p">,</span> <span class="n">altmap</span><span class="p">,</span>
+                            <span class="n">atom_map</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="n">defined</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">pdb_residue</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">try</span><span class="p">:</span> <span class="n">name</span> <span class="o">=</span> <span class="n">altmap</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">pdbname</span> <span class="o">=</span> <span class="n">pdbmap</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">pdbname</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">object</span><span class="o">.</span><span class="n">isSubsetModel</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;Atom &#39;</span><span class="o">+</span><span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s">&#39; of PDB residue &#39;</span> <span class="o">+</span>
+                               <span class="n">pdb_residue</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s">&#39; not found in residue &#39;</span> <span class="o">+</span>
+                               <span class="n">pdbmap</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39; of object &#39;</span> <span class="o">+</span> <span class="nb">object</span><span class="o">.</span><span class="n">fullName</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">pdbname</span><span class="p">:</span>
+            <span class="nb">object</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">pdbname</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">object</span><span class="o">.</span><span class="n">setIndex</span><span class="p">(</span><span class="n">pdbname</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">number</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">if</span> <span class="n">atom_map</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">atom_map</span><span class="p">[</span><span class="nb">object</span><span class="o">.</span><span class="n">getAtom</span><span class="p">(</span><span class="n">pdbname</span><span class="p">)]</span> <span class="o">=</span> <span class="n">atom</span>
+            <span class="n">defined</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">defined</span>
+
+<span class="k">def</span> <span class="nf">setConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">pdb_residues</span><span class="p">,</span>
+                     <span class="nb">map</span> <span class="o">=</span> <span class="s">&#39;pdbmap&#39;</span><span class="p">,</span> <span class="n">alt</span> <span class="o">=</span> <span class="s">&#39;pdb_alternative&#39;</span><span class="p">,</span>
+                     <span class="n">atom_map</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">toplevel</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
+    <span class="n">defined</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="s">&#39;is_protein&#39;</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="nb">object</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chain</span><span class="p">)</span>
+            <span class="n">defined</span> <span class="o">+=</span> <span class="n">setConfiguration</span><span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">pdb_residues</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">l</span><span class="p">],</span>
+                                        <span class="nb">map</span><span class="p">,</span> <span class="n">alt</span><span class="p">,</span> <span class="n">atom_map</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="n">l</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="s">&#39;is_chain&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nb">object</span><span class="p">)):</span>
+            <span class="n">defined</span> <span class="o">+=</span> <span class="n">setConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">pdb_residues</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">],</span>
+                                        <span class="nb">map</span><span class="p">,</span> <span class="n">alt</span><span class="p">,</span> <span class="n">atom_map</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="nb">map</span><span class="p">):</span>
+        <span class="n">pdbmap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="nb">map</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span> <span class="n">altmap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">alt</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> <span class="n">altmap</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">nres</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pdb_residues</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pdbmap</span><span class="p">)</span> <span class="o">!=</span> <span class="n">nres</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;PDB configuration does not match object &#39;</span> <span class="o">+</span>
+                           <span class="nb">object</span><span class="o">.</span><span class="n">fullName</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nres</span><span class="p">):</span>
+            <span class="n">defined</span> <span class="o">+=</span> <span class="n">setResidueConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">pdb_residues</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                                               <span class="n">pdbmap</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">altmap</span><span class="p">,</span> <span class="n">atom_map</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">Collections</span><span class="o">.</span><span class="n">isCollection</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="n">nres</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pdb_residues</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span> <span class="o">!=</span> <span class="n">nres</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;PDB configuration does not match object &#39;</span> <span class="o">+</span>
+                           <span class="nb">object</span><span class="o">.</span><span class="n">fullName</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nres</span><span class="p">):</span>
+            <span class="n">defined</span> <span class="o">+=</span> <span class="n">setConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="p">[</span><span class="n">pdb_residues</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span>
+                                        <span class="nb">map</span><span class="p">,</span> <span class="n">alt</span><span class="p">,</span> <span class="n">atom_map</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">fullName</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;???&#39;</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&#39;PDB configuration does not match object &#39;</span> <span class="o">+</span> <span class="n">name</span><span class="p">)</span>
+              
+    <span class="k">if</span> <span class="n">toplevel</span> <span class="ow">and</span> <span class="n">defined</span> <span class="o">&lt;</span> <span class="nb">object</span><span class="o">.</span><span class="n">numberOfAtoms</span><span class="p">():</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;[unnamed object]&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">fullName</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span> <span class="n">name</span> <span class="o">=</span> <span class="s">&#39; in &#39;</span> <span class="o">+</span> <span class="n">name</span>
+        <span class="n">Utility</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sb">`object.numberOfAtoms()-defined`</span> <span class="o">+</span> <span class="s">&#39; atom(s)&#39;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span>
+                        <span class="s">&#39; were not assigned (new) positions.&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">defined</span>
+
+
+<span class="c">#</span>
+<span class="c"># Create objects from a PDB configuration.</span>
+<span class="c">#</span>
+<span class="n">molecule_names</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;HOH&#39;</span><span class="p">:</span> <span class="s">&#39;water&#39;</span><span class="p">,</span> <span class="s">&#39;TIP&#39;</span><span class="p">:</span> <span class="s">&#39;water&#39;</span><span class="p">,</span> <span class="s">&#39;TIP3&#39;</span><span class="p">:</span> <span class="s">&#39;water&#39;</span><span class="p">,</span>
+                  <span class="s">&#39;WAT&#39;</span><span class="p">:</span> <span class="s">&#39;water&#39;</span><span class="p">,</span> <span class="s">&#39;HEM&#39;</span><span class="p">:</span> <span class="s">&#39;heme&#39;</span><span class="p">}</span>
+
+<span class="k">def</span> <span class="nf">defineMolecule</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">molecule_names</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">code</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;PDB code &quot;</span> <span class="o">+</span> <span class="n">code</span> <span class="o">+</span> <span class="s">&quot; already used&quot;</span><span class="p">)</span>
+    <span class="n">molecule_names</span><span class="p">[</span><span class="n">code</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+
+<span class="c">#</span>
+<span class="c"># This object represents a PDB file for output.</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="PDBOutputFile"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBOutputFile">[docs]</a><span class="k">class</span> <span class="nc">PDBOutputFile</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    PDB file for output</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">subformat</span><span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param filename: the name of the PDB file that is created</span>
+<span class="sd">        :type filename: str</span>
+<span class="sd">        :param subformat: a variant of the PDB format; these subformats</span>
+<span class="sd">                          are defined in module Scientific.IO.PDB. The</span>
+<span class="sd">                          default is the standard PDB format.</span>
+<span class="sd">        :type subformat: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="n">Scientific</span><span class="o">.</span><span class="n">IO</span><span class="o">.</span><span class="n">PDB</span><span class="o">.</span><span class="n">PDBFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">,</span> <span class="n">subformat</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">warning</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atom_sequence</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="PDBOutputFile.nextModel"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBOutputFile.nextModel">[docs]</a>    <span class="k">def</span> <span class="nf">nextModel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start a new model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">writeLine</span><span class="p">(</span><span class="s">&#39;ENDMDL&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">writeLine</span><span class="p">(</span><span class="s">&#39;MODEL&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;serial_number&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span><span class="p">})</span>
+        </div>
+<div class="viewcode-block" id="PDBOutputFile.write"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBOutputFile.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">,</span> <span class="n">configuration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">tag</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write  an object to the file</span>
+
+<span class="sd">        :param object: the object to be written</span>
+<span class="sd">        :type object: :class:`~MMTK.Collections.GroupOfAtoms`</span>
+<span class="sd">        :param configuration: the configuration from which the coordinates </span>
+<span class="sd">                              are taken (default: current configuration)</span>
+<span class="sd">        :type configuration: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">isChemicalObject</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">object</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">configuration</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">toplevel</span> <span class="o">=</span> <span class="n">tag</span> <span class="ow">is</span> <span class="bp">None</span>
+            <span class="k">if</span> <span class="n">toplevel</span><span class="p">:</span>
+                <span class="n">tag</span> <span class="o">=</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueAttribute</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="s">&#39;pdbmap&#39;</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="nb">object</span><span class="o">.</span><span class="n">pdbmap</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">nextResidue</span><span class="p">(</span><span class="n">residue</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">)</span>
+                    <span class="n">sorted_atoms</span> <span class="o">=</span> <span class="n">residue</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                    <span class="n">sorted_atoms</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span>
+                                      <span class="nb">cmp</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">number</span><span class="p">))</span>
+                    <span class="k">for</span> <span class="n">atom_name</span><span class="p">,</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">sorted_atoms</span><span class="p">:</span>
+                        <span class="n">atom</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">getAtom</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span>
+                        <span class="n">p</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">configuration</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">Utility</span><span class="o">.</span><span class="n">isDefinedPosition</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+                            <span class="k">try</span><span class="p">:</span> <span class="n">occ</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">occupancy</span>
+                            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> <span class="n">occ</span> <span class="o">=</span> <span class="mf">0.</span>
+                            <span class="k">try</span><span class="p">:</span> <span class="n">temp</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">temperature_factor</span>
+                            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> <span class="n">temp</span> <span class="o">=</span> <span class="mf">0.</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">writeAtom</span><span class="p">(</span><span class="n">atom_name</span><span class="p">,</span> <span class="n">p</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">,</span>
+                                                <span class="n">occ</span><span class="p">,</span> <span class="n">temp</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">symbol</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">atom_sequence</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">warning</span> <span class="o">=</span> <span class="bp">True</span>
+                        <span class="nb">setattr</span><span class="p">(</span><span class="n">atom</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="s">&#39;is_protein&#39;</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="nb">object</span><span class="p">:</span>                    
+                        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="s">&#39;is_chain&#39;</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">nextChain</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="nb">object</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="nb">object</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">residue</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">terminateChain</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="s">&#39;molecules&#39;</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">object</span><span class="o">.</span><span class="n">molecules</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="s">&#39;groups&#39;</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">object</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">toplevel</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">object</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+                    <span class="nb">delattr</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PDBOutputFile.close"><a class="viewcode-back" href="../../modules.html#MMTK.PDB.PDBOutputFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Closes the file. Must be called in order to prevent data loss.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_number</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">writeLine</span><span class="p">(</span><span class="s">&#39;ENDMDL&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">warning</span><span class="p">:</span>
+            <span class="n">Utility</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&#39;Some atoms are missing in the output file &#39;</span> <span class="o">+</span> \
+                            <span class="s">&#39;because their positions are undefined.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">warning</span> <span class="o">=</span> <span class="bp">False</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

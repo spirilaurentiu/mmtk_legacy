@@ -1,0 +1,398 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.PDBMoleculeFactory &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.PDBMoleculeFactory</h1><div class="highlight"><pre>
+<span class="c"># This module constructs molecules and universes corresponding exactly</span>
+<span class="c"># to the contents of a PDB file, using residue and atom names as</span>
+<span class="c"># given in the file.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Molecule factory defined by a PDB file</span>
+
+<span class="sd">This module permits the construction of molecular objects that correspond</span>
+<span class="sd">exactly to the contents of a PDB file. It is used for working with</span>
+<span class="sd">experimental data. Note that most force fields cannot be applied to the</span>
+<span class="sd">systems generated in this way because the molecule factory does not know</span>
+<span class="sd">any force field parameters.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">import</span> <span class="nn">MMTK</span>
+<span class="kn">from</span> <span class="nn">MMTK.MoleculeFactory</span> <span class="kn">import</span> <span class="n">MoleculeFactory</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span><span class="p">,</span> <span class="n">delta</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<div class="viewcode-block" id="PDBMoleculeFactory"><a class="viewcode-back" href="../../modules.html#MMTK.PDBMoleculeFactory.PDBMoleculeFactory">[docs]</a><span class="k">class</span> <span class="nc">PDBMoleculeFactory</span><span class="p">(</span><span class="n">MoleculeFactory</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A PDBMoleculeFactory generates molecules and universes from the</span>
+<span class="sd">    contents of a PDBConfiguration. Nothing is added or left out</span>
+<span class="sd">    (except as defined by the optional residue and atom filters), and</span>
+<span class="sd">    the atom and residue names are exactly those of the original PDB</span>
+<span class="sd">    file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdb_conf</span><span class="p">,</span> <span class="n">residue_filter</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">atom_filter</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param pdb_conf: a PDBConfiguration</span>
+<span class="sd">        :type pdb_conf: :class:`~MMTK.PDB.PDBConfiguration`</span>
+<span class="sd">        :param residue_filter: a function taking a residue object</span>
+<span class="sd">                               (as defined in Scientific.IO.PDB)</span>
+<span class="sd">                               and returning True if that residue is</span>
+<span class="sd">                               to be kept in the molecule factory</span>
+<span class="sd">        :type residue_filter: callable</span>
+<span class="sd">        :param atom_filter: a function taking a residue object and an</span>
+<span class="sd">                            atom object (as defined in Scientific.IO.PDB)     </span>
+<span class="sd">                            and returning True if that atom is </span>
+<span class="sd">                            to be kept in the molecule factory</span>
+<span class="sd">        :type atom_filter: callable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">MoleculeFactory</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">residue_filter</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">atom_filter</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span> <span class="o">=</span> <span class="n">pdb_conf</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">pdb_conf</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">atom_filter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">residues</span><span class="p">:</span>
+                    <span class="n">delete</span> <span class="o">=</span> <span class="p">[</span><span class="n">atom</span> <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">residue</span>
+                              <span class="k">if</span> <span class="ow">not</span> <span class="n">atom_filter</span><span class="p">(</span><span class="n">residue</span><span class="p">,</span> <span class="n">atom</span><span class="p">)]</span>
+                    <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">delete</span><span class="p">:</span>
+                        <span class="n">residue</span><span class="o">.</span><span class="n">deleteAtom</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">residue_filter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">delete</span> <span class="o">=</span> <span class="p">[</span><span class="n">residue</span> <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">residues</span>
+                          <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">residue</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">residue_filter</span><span class="p">(</span><span class="n">residue</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="n">delete</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">deleteResidue</span><span class="p">(</span><span class="n">residue</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">peptide_chains</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nucleotide_chains</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">molecules</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">makeAll</span><span class="p">()</span>
+
+<div class="viewcode-block" id="PDBMoleculeFactory.retrieveMolecules"><a class="viewcode-back" href="../../modules.html#MMTK.PDBMoleculeFactory.PDBMoleculeFactory.retrieveMolecules">[docs]</a>    <span class="k">def</span> <span class="nf">retrieveMolecules</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructs Molecule objects corresponding to the contents of the</span>
+<span class="sd">        PDBConfiguration. Each peptide or nucleotide chain becomes</span>
+<span class="sd">        one molecule. For residues that are neither amino acids nor</span>
+<span class="sd">        nucleic acids, each residue becomes one molecule.</span>
+
+<span class="sd">        Chain molecules (peptide and nucleotide chains) can be iterated</span>
+<span class="sd">        over to retrieve the individual residues. The residues can also</span>
+<span class="sd">        be accessed as attributes whose names are the three-letter</span>
+<span class="sd">        residue name (upper case) followed by an underscore and the</span>
+<span class="sd">        residue number from the PDB file (e.g. &#39;GLY_34&#39;).</span>
+
+<span class="sd">        Each object that corresponds to a PDB residue (i.e. each</span>
+<span class="sd">        residue in a chain and each non-chain molecule) has the</span>
+<span class="sd">        attributes &#39;residue_name&#39; and &#39;residue_number&#39;. Each atom has</span>
+<span class="sd">        the attributes &#39;serial_number&#39;, &#39;occupancy&#39; and</span>
+<span class="sd">        &#39;temperature_factor&#39;. Atoms for which a ANISOU record exists</span>
+<span class="sd">        also have an attribute &#39;u&#39; whose value is a tensor object.</span>
+<span class="sd">        </span>
+<span class="sd">        :returns: a list of Molecule objects</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">retrieveMolecule</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+                   <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">peptide_chains</span>
+                            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nucleotide_chains</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">mollist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecules</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">objects</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">retrieveMolecule</span><span class="p">(</span><span class="n">residue</span><span class="p">)</span>
+                            <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="n">mollist</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">objects</span>
+</div>
+<div class="viewcode-block" id="PDBMoleculeFactory.retrieveUniverse"><a class="viewcode-back" href="../../modules.html#MMTK.PDBMoleculeFactory.PDBMoleculeFactory.retrieveUniverse">[docs]</a>    <span class="k">def</span> <span class="nf">retrieveUniverse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructs an empty universe (OrthrhombicPeriodicUniverse or</span>
+<span class="sd">        ParallelepipedicPeriodicUniverse) representing the</span>
+<span class="sd">        unit cell of the crystal. If the PDB file does not define</span>
+<span class="sd">        a unit cell at all, an InfiniteUniverse is returned.</span>
+<span class="sd">        </span>
+<span class="sd">        :returns: a universe</span>
+<span class="sd">        :rtype: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">createUnitCellUniverse</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="PDBMoleculeFactory.retrieveAsymmetricUnit"><a class="viewcode-back" href="../../modules.html#MMTK.PDBMoleculeFactory.PDBMoleculeFactory.retrieveAsymmetricUnit">[docs]</a>    <span class="k">def</span> <span class="nf">retrieveAsymmetricUnit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructs a universe (OrthrhombicPeriodicUniverse or</span>
+<span class="sd">        ParallelepipedicPeriodicUniverse) representing the</span>
+<span class="sd">        unit cell of the crystal and adds the molecules representing</span>
+<span class="sd">        the asymmetric unit.</span>
+<span class="sd">        </span>
+<span class="sd">        :returns: a universe</span>
+<span class="sd">        :rtype: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retrieveUniverse</span><span class="p">()</span>
+        <span class="n">universe</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">retrieveMolecules</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">universe</span>
+</div>
+<div class="viewcode-block" id="PDBMoleculeFactory.retrieveUnitCell"><a class="viewcode-back" href="../../modules.html#MMTK.PDBMoleculeFactory.PDBMoleculeFactory.retrieveUnitCell">[docs]</a>    <span class="k">def</span> <span class="nf">retrieveUnitCell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructs a universe (OrthrhombicPeriodicUniverse or</span>
+<span class="sd">        ParallelepipedicPeriodicUniverse) representing the</span>
+<span class="sd">        unit cell of the crystal and adds all the molecules it</span>
+<span class="sd">        contains, i.e. the molecules of the asymmetric unit and</span>
+<span class="sd">        its images obtained by applying the crystallographic</span>
+<span class="sd">        symmetry operations.</span>
+
+<span class="sd">        :param compact: if True, the images are shifted such that</span>
+<span class="sd">                        their centers of mass lie inside the unit cell.</span>
+<span class="sd">        :type compact: bool</span>
+<span class="sd">        :returns: a universe</span>
+<span class="sd">        :rtype: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">cs_transformations</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">retrieveAsymmetricUnit</span><span class="p">()</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retrieveUniverse</span><span class="p">()</span>
+        <span class="n">asu_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">symop</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">cs_transformations</span><span class="p">:</span>
+            <span class="n">transformation</span> <span class="o">=</span> <span class="n">symop</span><span class="o">.</span><span class="n">asLinearTransformation</span><span class="p">()</span>
+            <span class="n">rotation</span> <span class="o">=</span> <span class="n">transformation</span><span class="o">.</span><span class="n">tensor</span>
+            <span class="n">translation</span> <span class="o">=</span> <span class="n">transformation</span><span class="o">.</span><span class="n">vector</span>
+            <span class="n">is_asu</span> <span class="o">=</span> <span class="n">translation</span><span class="o">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">1.e-8</span> <span class="ow">and</span> \
+                     <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">fabs</span><span class="p">((</span><span class="n">rotation</span>
+                                                      <span class="o">-</span><span class="n">delta</span><span class="p">)</span><span class="o">.</span><span class="n">array</span><span class="p">)))</span> <span class="o">&lt;</span> <span class="mf">1.e-8</span>
+            <span class="k">if</span> <span class="n">is_asu</span><span class="p">:</span>
+                <span class="n">asu_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">asu</span> <span class="o">=</span> <span class="n">MMTK</span><span class="o">.</span><span class="n">Collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">retrieveMolecules</span><span class="p">())</span>
+            <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">asu</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+                <span class="n">atom</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">symop</span><span class="p">(</span><span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">()))</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">atom</span><span class="p">,</span> <span class="s">&#39;u&#39;</span><span class="p">):</span>
+                    <span class="n">atom</span><span class="o">.</span><span class="n">u</span> <span class="o">=</span> <span class="n">rotation</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">atom</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rotation</span><span class="o">.</span><span class="n">transpose</span><span class="p">()))</span>
+                    <span class="n">atom</span><span class="o">.</span><span class="n">u</span> <span class="o">=</span> <span class="n">atom</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">symmetricalPart</span><span class="p">()</span>
+                <span class="n">atom</span><span class="o">.</span><span class="n">in_asu</span> <span class="o">=</span> <span class="n">is_asu</span>
+            <span class="k">if</span> <span class="n">compact</span><span class="p">:</span>
+                <span class="n">cm</span> <span class="o">=</span> <span class="n">asu</span><span class="o">.</span><span class="n">centerOfMass</span><span class="p">()</span>
+                <span class="n">cm_fr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">to_fractional</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+                <span class="n">cm_fr</span> <span class="o">=</span> <span class="n">Vector</span><span class="p">(</span><span class="n">cm_fr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mf">1.</span><span class="p">,</span> <span class="n">cm_fr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="mf">1.</span><span class="p">,</span> <span class="n">cm_fr</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">%</span> <span class="mf">1.</span><span class="p">)</span> \
+                        <span class="o">-</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+                <span class="n">cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">from_fractional</span><span class="p">(</span><span class="n">cm_fr</span><span class="p">)</span>
+                <span class="n">asu</span><span class="o">.</span><span class="n">translateTo</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+            <span class="n">universe</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">asu</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">asu_count</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">universe</span>
+</div>
+    <span class="k">def</span> <span class="nf">makeAll</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cystines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">peptide_chains</span><span class="p">:</span>
+            <span class="n">chain_id</span> <span class="o">=</span> <span class="n">chain</span><span class="o">.</span><span class="n">chain_id</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chain_id</span><span class="p">:</span>
+                <span class="n">chain_id</span> <span class="o">=</span> <span class="s">&#39;PeptideChain&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">peptide_chains</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;CYS&#39;</span> <span class="ow">and</span> <span class="n">residue</span><span class="o">.</span><span class="n">atoms</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s">&#39;SG&#39;</span><span class="p">):</span>
+                    <span class="n">cystines</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">chain_id</span><span class="p">,</span> <span class="n">residue</span><span class="p">,</span> <span class="n">residue</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="s">&#39;SG&#39;</span><span class="p">]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">makeChain</span><span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">chain_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">peptide_chains</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chain_id</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cystines</span><span class="p">)):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">cystines</span><span class="p">)):</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">cystines</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="o">-</span><span class="n">cystines</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;</span> <span class="mf">0.25</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">cystines</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">cystines</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+                        <span class="n">cys1</span> <span class="o">=</span> <span class="n">cystines</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="n">cys2</span> <span class="o">=</span> <span class="n">cystines</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="n">cys1</span> <span class="o">=</span> <span class="n">cys1</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">cys1</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+                        <span class="n">cys2</span> <span class="o">=</span> <span class="n">cys2</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">cys2</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">addBond</span><span class="p">(</span><span class="n">cystines</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">cys1</span><span class="o">+</span><span class="s">&#39;.SG&#39;</span><span class="p">,</span> <span class="n">cys2</span><span class="o">+</span><span class="s">&#39;.SG&#39;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&#39;Inter-chain disulfide bridges&#39;</span>
+                                             <span class="s">&#39; not yet implemented&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">nucleotide_chains</span><span class="p">:</span>
+            <span class="n">chain_id</span> <span class="o">=</span> <span class="n">chain</span><span class="o">.</span><span class="n">chain_id</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chain_id</span><span class="p">:</span>
+                <span class="n">chain_id</span> <span class="o">=</span> <span class="s">&#39;NucleotideChain&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nucleotide_chains</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">makeChain</span><span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">chain_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nucleotide_chains</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chain_id</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">molname</span><span class="p">,</span> <span class="n">mollist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdb_conf</span><span class="o">.</span><span class="n">molecules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">molecules</span><span class="p">[</span><span class="n">molname</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="n">mollist</span><span class="p">:</span>
+                <span class="n">base_resname</span> <span class="o">=</span> <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">residue</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+                <span class="n">suffix</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">resname</span> <span class="o">=</span> <span class="n">base_resname</span>
+                <span class="n">done</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">makeResidue</span><span class="p">(</span><span class="n">residue</span><span class="p">,</span> <span class="n">resname</span><span class="p">)</span>
+                        <span class="n">done</span> <span class="o">=</span> <span class="bp">True</span>
+                    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;redefinition&quot;</span><span class="p">:</span>
+                            <span class="n">resname</span> <span class="o">=</span> <span class="n">base_resname</span> <span class="o">+</span> <span class="s">&quot;_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
+                            <span class="n">suffix</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">raise</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">molecules</span><span class="p">[</span><span class="n">molname</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resname</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">makeChain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chain</span><span class="p">,</span> <span class="n">chain_id</span><span class="p">):</span>
+        <span class="n">groups</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">:</span>
+            <span class="n">resname</span> <span class="o">=</span> <span class="n">chain_id</span> <span class="o">+</span> <span class="s">&#39;_&#39;</span> <span class="o">+</span> <span class="n">residue</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">residue</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+            <span class="n">groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resname</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">makeResidue</span><span class="p">(</span><span class="n">residue</span><span class="p">,</span> <span class="n">resname</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">createGroup</span><span class="p">(</span><span class="n">chain_id</span><span class="p">)</span>
+        <span class="n">local_resnames</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">resname</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">:</span>
+            <span class="n">local_resname</span> <span class="o">=</span> <span class="s">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">resname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;_&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addSubgroup</span><span class="p">(</span><span class="n">chain_id</span><span class="p">,</span> <span class="n">local_resname</span><span class="p">,</span> <span class="n">resname</span><span class="p">)</span>
+            <span class="n">local_resnames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">local_resname</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">chain_id</span><span class="p">,</span> <span class="s">&#39;sequence&#39;</span><span class="p">,</span> <span class="n">local_resnames</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">chain</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">chain</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="n">chain</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">number</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">atom1</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="k">for</span> <span class="n">atom2</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">assumeBond</span><span class="p">(</span><span class="n">atom1</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;element&#39;</span><span class="p">],</span>
+                                           <span class="n">atom1</span><span class="o">.</span><span class="n">position</span><span class="p">,</span>
+                                           <span class="n">atom2</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;element&#39;</span><span class="p">],</span>
+                                           <span class="n">atom2</span><span class="o">.</span><span class="n">position</span><span class="p">):</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">addBond</span><span class="p">(</span><span class="n">chain_id</span><span class="p">,</span>
+                                         <span class="n">local_resnames</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;.&#39;</span><span class="o">+</span><span class="n">atom1</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                         <span class="n">local_resnames</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;.&#39;</span><span class="o">+</span><span class="n">atom2</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                       
+    <span class="k">def</span> <span class="nf">makeResidue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">residue</span><span class="p">,</span> <span class="n">group_name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">createGroup</span><span class="p">(</span><span class="n">group_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="s">&#39;residue_name&#39;</span><span class="p">,</span> <span class="n">residue</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="s">&#39;residue_number&#39;</span><span class="p">,</span> <span class="n">residue</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+        <span class="n">atoms</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">residue</span><span class="p">:</span>
+            <span class="n">atoms</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;element&#39;</span><span class="p">],</span>
+                          <span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addAtom</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;element&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s">&#39;.temperature_factor&#39;</span><span class="p">,</span>
+                              <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;temperature_factor&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s">&#39;.occupancy&#39;</span><span class="p">,</span>
+                              <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;occupancy&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s">&#39;.serial_number&#39;</span><span class="p">,</span>
+                              <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;serial_number&#39;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s">&#39;u&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setAttribute</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s">&#39;.u&#39;</span><span class="p">,</span>
+                                  <span class="n">atom</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s">&#39;u&#39;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="p">)):</span>
+            <span class="n">atom_i</span><span class="p">,</span> <span class="n">element_i</span><span class="p">,</span> <span class="n">pos_i</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="p">)):</span>
+                <span class="n">atom_j</span><span class="p">,</span> <span class="n">element_j</span><span class="p">,</span> <span class="n">pos_j</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">assumeBond</span><span class="p">(</span><span class="n">element_i</span><span class="p">,</span> <span class="n">pos_i</span><span class="p">,</span> <span class="n">element_j</span><span class="p">,</span> <span class="n">pos_j</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">addBond</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="n">atom_i</span><span class="p">,</span> <span class="n">atom_j</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">assumeBond</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element1</span><span class="p">,</span> <span class="n">pos1</span><span class="p">,</span> <span class="n">element2</span><span class="p">,</span> <span class="n">pos2</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">element1</span> <span class="o">&gt;</span> <span class="n">element2</span><span class="p">:</span>
+            <span class="n">element1</span><span class="p">,</span> <span class="n">element2</span> <span class="o">=</span> <span class="n">element2</span><span class="p">,</span> <span class="n">element1</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond_lengths</span><span class="p">[(</span><span class="n">element1</span><span class="p">,</span> <span class="n">element2</span><span class="p">)]</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">pos1</span><span class="o">-</span><span class="n">pos2</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">d</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="n">bond_lengths</span> <span class="o">=</span> <span class="p">{(</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="s">&#39;C&#39;</span><span class="p">):</span> <span class="mf">0.16</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="s">&#39;H&#39;</span><span class="p">):</span> <span class="mf">0.115</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="s">&#39;N&#39;</span><span class="p">):</span> <span class="mf">0.215</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="s">&#39;O&#39;</span><span class="p">):</span> <span class="mf">0.16</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="s">&#39;P&#39;</span><span class="p">):</span> <span class="mf">0.2</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="s">&#39;S&#39;</span><span class="p">):</span> <span class="mf">0.2</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">,</span> <span class="s">&#39;H&#39;</span><span class="p">):</span> <span class="mf">0.08</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">,</span> <span class="s">&#39;N&#39;</span><span class="p">):</span> <span class="mf">0.115</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">,</span> <span class="s">&#39;O&#39;</span><span class="p">):</span> <span class="mf">0.115</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">,</span> <span class="s">&#39;P&#39;</span><span class="p">):</span> <span class="mf">0.15</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;H&#39;</span><span class="p">,</span> <span class="s">&#39;S&#39;</span><span class="p">):</span> <span class="mf">0.14</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;N&#39;</span><span class="p">,</span> <span class="s">&#39;N&#39;</span><span class="p">):</span> <span class="mf">0.155</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;N&#39;</span><span class="p">,</span> <span class="s">&#39;O&#39;</span><span class="p">):</span> <span class="mf">0.15</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;O&#39;</span><span class="p">,</span> <span class="s">&#39;O&#39;</span><span class="p">):</span> <span class="mf">0.16</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;O&#39;</span><span class="p">,</span> <span class="s">&#39;P&#39;</span><span class="p">):</span> <span class="mf">0.17</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;O&#39;</span><span class="p">,</span> <span class="s">&#39;S&#39;</span><span class="p">):</span> <span class="mf">0.16</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;P&#39;</span><span class="p">,</span> <span class="s">&#39;S&#39;</span><span class="p">):</span> <span class="mf">0.2</span><span class="p">,</span>
+                    <span class="p">(</span><span class="s">&#39;S&#39;</span><span class="p">,</span> <span class="s">&#39;S&#39;</span><span class="p">):</span> <span class="mf">0.25</span><span class="p">,</span>
+                    <span class="p">}</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

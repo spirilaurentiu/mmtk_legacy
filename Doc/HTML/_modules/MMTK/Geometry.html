@@ -1,0 +1,896 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Geometry &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Geometry</h1><div class="highlight"><pre>
+<span class="c"># This module defines some geometrical objects in 3D-space.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Elementary geometrical objects and operations</span>
+
+<span class="sd">There are essentially two kinds of geometrical objects: shape objects</span>
+<span class="sd">(spheres, planes, etc.), from which intersections can be calculated,</span>
+<span class="sd">and lattice objects, which define a regular arrangements of points.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+
+<span class="c"># Error type</span>
+<span class="k">class</span> <span class="nc">GeomError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="c"># Small number</span>
+<span class="n">eps</span> <span class="o">=</span> <span class="mf">1.e-16</span>
+
+<span class="c">#</span>
+<span class="c"># The base class</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="GeometricalObject3D"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.GeometricalObject3D">[docs]</a><span class="k">class</span> <span class="nc">GeometricalObject3D</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    3D shape object</span>
+
+<span class="sd">    This is an abstract base class. To create 3D objects,</span>
+<span class="sd">    use one of its subclasses.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="GeometricalObject3D.intersectWith"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.GeometricalObject3D.intersectWith">[docs]</a>    <span class="k">def</span> <span class="nf">intersectWith</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: another 3D object</span>
+<span class="sd">        :returns: a 3D object that represents the intersection with other</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="o">&gt;</span> <span class="n">other</span><span class="o">.</span><span class="n">__class__</span><span class="p">:</span>
+	    <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="p">,</span> <span class="bp">self</span>
+	<span class="k">try</span><span class="p">:</span>
+	    <span class="n">f</span><span class="p">,</span> <span class="n">switch</span> <span class="o">=</span> <span class="n">_intersectTable</span><span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">__class__</span><span class="p">)]</span>
+	    <span class="k">if</span> <span class="n">switch</span><span class="p">:</span>
+		<span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+	    <span class="k">else</span><span class="p">:</span>
+		<span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+	<span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+	    <span class="k">raise</span> <span class="n">GeomError</span><span class="p">(</span><span class="s">&quot;Can&#39;t calculate intersection of &quot;</span> <span class="o">+</span>
+			     <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span> <span class="o">+</span> <span class="s">&quot; with &quot;</span> <span class="o">+</span>
+			     <span class="n">other</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GeometricalObject3D.volume"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.GeometricalObject3D.volume">[docs]</a>    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the volume of the object</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+<div class="viewcode-block" id="GeometricalObject3D.hasPoint"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.GeometricalObject3D.hasPoint">[docs]</a>    <span class="k">def</span> <span class="nf">hasPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param point: a point in 3D space</span>
+<span class="sd">        :type point: Scientific.Geometry.Vector</span>
+<span class="sd">        :returns: True of the point lies on the surface of the object</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">distanceFrom</span><span class="p">(</span><span class="n">point</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span>
+
+    <span class="c"># subclasses that enclose a volume should override this method</span>
+    <span class="c"># a return value of None indicates &quot;don&#39;t know&quot;, &quot;can&#39;t compute&quot;,</span>
+    <span class="c"># or &quot;not implemented (yet)&quot;.</span></div>
+<div class="viewcode-block" id="GeometricalObject3D.enclosesPoint"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.GeometricalObject3D.enclosesPoint">[docs]</a>    <span class="k">def</span> <span class="nf">enclosesPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param point: a point in 3D space</span>
+<span class="sd">        :type point: Scientific.Geometry.Vector</span>
+<span class="sd">        :returns: True of the point is inside the volume of the object</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">None</span>
+</div></div>
+<span class="n">_intersectTable</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c">#</span>
+<span class="c"># Boxes</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="Box"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Box">[docs]</a><span class="k">class</span> <span class="nc">Box</span><span class="p">(</span><span class="n">GeometricalObject3D</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rectangular box aligned with the coordinate axes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">corner1</span><span class="p">,</span> <span class="n">corner2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param corner1: one corner of the box</span>
+<span class="sd">        :type corner1: Scientific.Geometry.Vector</span>
+<span class="sd">        :param corner2: the diagonally opposite corner</span>
+<span class="sd">        :type corner2: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">c1</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">corner1</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">corner2</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+        <span class="n">c2</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">corner1</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">corner2</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">corners</span> <span class="o">=</span> <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Box(&#39;</span> <span class="o">+</span> <span class="sb">`Vector(self.corners[0])`</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> \
+               <span class="o">+</span> <span class="sb">`Vector(self.corners[1])`</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">corners</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">multiply</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">c2</span><span class="o">-</span><span class="n">c1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">hasPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">corners</span>
+        <span class="n">min1</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">array</span><span class="o">-</span><span class="n">c1</span><span class="p">))</span>
+        <span class="n">min2</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">array</span><span class="o">-</span><span class="n">c2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">min1</span> <span class="o">&lt;</span> <span class="n">eps</span> <span class="ow">or</span> <span class="n">min2</span> <span class="o">&lt;</span> <span class="n">eps</span>
+
+    <span class="k">def</span> <span class="nf">enclosesPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">corners</span>
+        <span class="n">out1</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">logical_or</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">less</span><span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">array</span><span class="o">-</span><span class="n">c1</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">out2</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">logical_or</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">less_equal</span><span class="p">(</span><span class="n">c2</span><span class="o">-</span><span class="n">point</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="n">out1</span> <span class="ow">or</span> <span class="n">out2</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">cornerPoints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="p">(</span><span class="n">c1x</span><span class="p">,</span> <span class="n">c1y</span><span class="p">,</span> <span class="n">c1z</span><span class="p">),</span> <span class="p">(</span><span class="n">c2x</span><span class="p">,</span> <span class="n">c2y</span><span class="p">,</span> <span class="n">c2z</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">corners</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Vector</span><span class="p">(</span><span class="n">c1x</span><span class="p">,</span> <span class="n">c1y</span><span class="p">,</span> <span class="n">c1z</span><span class="p">),</span>
+                <span class="n">Vector</span><span class="p">(</span><span class="n">c1x</span><span class="p">,</span> <span class="n">c1y</span><span class="p">,</span> <span class="n">c2z</span><span class="p">),</span>
+                <span class="n">Vector</span><span class="p">(</span><span class="n">c1x</span><span class="p">,</span> <span class="n">c2y</span><span class="p">,</span> <span class="n">c1z</span><span class="p">),</span>
+                <span class="n">Vector</span><span class="p">(</span><span class="n">c2x</span><span class="p">,</span> <span class="n">c1y</span><span class="p">,</span> <span class="n">c1z</span><span class="p">),</span>
+                <span class="n">Vector</span><span class="p">(</span><span class="n">c2x</span><span class="p">,</span> <span class="n">c2y</span><span class="p">,</span> <span class="n">c1z</span><span class="p">),</span>
+                <span class="n">Vector</span><span class="p">(</span><span class="n">c2x</span><span class="p">,</span> <span class="n">c1y</span><span class="p">,</span> <span class="n">c2z</span><span class="p">),</span>
+                <span class="n">Vector</span><span class="p">(</span><span class="n">c1x</span><span class="p">,</span> <span class="n">c2y</span><span class="p">,</span> <span class="n">c2z</span><span class="p">),</span>
+                <span class="n">Vector</span><span class="p">(</span><span class="n">c2x</span><span class="p">,</span> <span class="n">c2y</span><span class="p">,</span> <span class="n">c2z</span><span class="p">)]</span>
+
+<span class="c">#</span>
+<span class="c"># Spheres</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="Sphere"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Sphere">[docs]</a><span class="k">class</span> <span class="nc">Sphere</span><span class="p">(</span><span class="n">GeometricalObject3D</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sphere</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">radius</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param center: the center of the sphere</span>
+<span class="sd">        :type center: Scientific.Geometry.Vector</span>
+<span class="sd">        :param radius: the radius of the sphere</span>
+<span class="sd">        :type radius: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">center</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">radius</span> <span class="o">=</span> <span class="n">radius</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Sphere(&#39;</span> <span class="o">+</span> <span class="sb">`self.center`</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.radius`</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+	<span class="k">return</span> <span class="p">(</span><span class="mf">4.</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mf">3.</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="o">**</span><span class="mi">3</span>
+
+    <span class="k">def</span> <span class="nf">hasPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">fabs</span><span class="p">((</span><span class="n">point</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span>
+
+    <span class="k">def</span> <span class="nf">enclosesPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">point</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span>
+
+<span class="c">#</span>
+<span class="c"># Cylinders</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="Cylinder"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Cylinder">[docs]</a><span class="k">class</span> <span class="nc">Cylinder</span><span class="p">(</span><span class="n">GeometricalObject3D</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cylinder</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center1</span><span class="p">,</span> <span class="n">center2</span><span class="p">,</span> <span class="n">radius</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param center1: the center of the bottom circle</span>
+<span class="sd">        :type center1: Scientific.Geometry.Vector</span>
+<span class="sd">        :param center2: the center of the top circle</span>
+<span class="sd">        :type center2: Scientific.Geometry.Vector</span>
+<span class="sd">        :param radius: the radius of the cylinder</span>
+<span class="sd">        :type radius: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center1</span> <span class="o">=</span> <span class="n">center1</span>            <span class="c"># center of base</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center2</span> <span class="o">=</span> <span class="n">center2</span>            <span class="c"># center of top</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">radius</span> <span class="o">=</span> <span class="n">radius</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="p">(</span><span class="n">center2</span><span class="o">-</span><span class="n">center1</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">height</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Cylinder(&#39;</span> <span class="o">+</span> <span class="sb">`self.center1`</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.center2`</span> <span class="o">+</span> \
+               <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.radius`</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">hasPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="n">center_line</span> <span class="o">=</span> <span class="n">LineSegment</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">center1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">center2</span><span class="p">)</span>
+        <span class="n">pt</span> <span class="o">=</span> <span class="n">center_line</span><span class="o">.</span><span class="n">projectionOf</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pt</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">fabs</span><span class="p">((</span><span class="n">point</span> <span class="o">-</span> <span class="n">pt</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span>
+
+    <span class="k">def</span> <span class="nf">enclosesPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="n">center_line</span> <span class="o">=</span> <span class="n">LineSegment</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">center1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">center2</span><span class="p">)</span>
+        <span class="n">pt</span> <span class="o">=</span> <span class="n">center_line</span><span class="o">.</span><span class="n">projectionOf</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pt</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">point</span> <span class="o">-</span> <span class="n">pt</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span>
+
+<span class="c">#</span>
+<span class="c"># Planes</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="Plane"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Plane">[docs]</a><span class="k">class</span> <span class="nc">Plane</span><span class="p">(</span><span class="n">GeometricalObject3D</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    2D plane in 3D space</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param args: three points (of type Scientific.Geometry.Vector)</span>
+<span class="sd">                     that are not collinear, or a point in the plane and</span>
+<span class="sd">                     the normal vector of the plane</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>   <span class="c"># point, normal</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">normal</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">distance_from_zero</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="o">*</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+	<span class="k">else</span><span class="p">:</span>                <span class="c"># three points</span>
+	    <span class="n">v1</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+	    <span class="n">v2</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">normal</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">v2</span><span class="p">))</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">distance_from_zero</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="o">*</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Plane(&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">distance_from_zero</span><span class="p">)</span> <span class="o">+</span> \
+               <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">distanceFrom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+	<span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="o">*</span><span class="n">point</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">distance_from_zero</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">projectionOf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">point</span> <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="o">*</span><span class="n">point</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">distance_from_zero</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">normal</span>
+
+    <span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+	<span class="n">point</span> <span class="o">=</span> <span class="n">rotatePoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distance_from_zero</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="p">)</span>
+	<span class="n">normal</span> <span class="o">=</span> <span class="n">rotateDirection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">Plane</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">normal</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+	<span class="k">return</span> <span class="mf">0.</span>
+
+<span class="c">#</span>
+<span class="c"># Infinite cones</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="Cone"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Cone">[docs]</a><span class="k">class</span> <span class="nc">Cone</span><span class="p">(</span><span class="n">GeometricalObject3D</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cone</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param center: the center (tip) of the cone</span>
+<span class="sd">        :type center: Scientific.Geometry.Vector</span>
+<span class="sd">        :param axis: the direction of the axis of rotational symmetry</span>
+<span class="sd">        :type axis: Scientific.Geometry.Vector</span>
+<span class="sd">        :param angle: the angle between any straight line on the cone</span>
+<span class="sd">                      surface and the axis of symmetry</span>
+<span class="sd">        :type angle: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">center</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">axis</span> <span class="o">=</span> <span class="n">axis</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">angle</span> <span class="o">=</span> <span class="n">angle</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Cone(&#39;</span> <span class="o">+</span> <span class="sb">`self.center`</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.axis`</span> <span class="o">+</span> <span class="s">&#39;,&#39;</span> <span class="o">+</span> \
+               <span class="sb">`self.angle`</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+	<span class="k">return</span> <span class="bp">None</span>
+
+<span class="c">#</span>
+<span class="c"># Circles</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="Circle"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Circle">[docs]</a><span class="k">class</span> <span class="nc">Circle</span><span class="p">(</span><span class="n">GeometricalObject3D</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    2D circle in 3D space</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="n">radius</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param center: the center of the circle</span>
+<span class="sd">        :type center: Scientific.Geometry.Vector</span>
+<span class="sd">        :param normal: the normal vector of the circle&#39;s plane</span>
+<span class="sd">        :type normal: Scientific.Geometry.Vector</span>
+<span class="sd">        :param radius: the radius of the circle</span>
+<span class="sd">        :type radius: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">center</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">normal</span> <span class="o">=</span> <span class="n">normal</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">radius</span> <span class="o">=</span> <span class="n">radius</span>
+
+    <span class="k">def</span> <span class="nf">planeOf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Plane</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normal</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Circle(&#39;</span> <span class="o">+</span> <span class="sb">`self.center`</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.normal`</span> <span class="o">+</span> \
+               <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.radius`</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.</span>
+
+    <span class="k">def</span> <span class="nf">distanceFrom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="n">plane</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">planeOf</span><span class="p">()</span>
+        <span class="n">project_on_plane</span> <span class="o">=</span> <span class="n">plane</span><span class="o">.</span><span class="n">projectionOf</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+        <span class="n">center_to_projection</span> <span class="o">=</span> <span class="n">project_on_plane</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">center</span>
+        <span class="k">if</span> <span class="n">center_to_projection</span><span class="o">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="n">closest_point</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">center</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="o">*</span><span class="n">center_to_projection</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">point</span> <span class="o">-</span> <span class="n">closest_point</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+
+<span class="c">#</span>
+<span class="c"># Lines</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="Line"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Line">[docs]</a><span class="k">class</span> <span class="nc">Line</span><span class="p">(</span><span class="n">GeometricalObject3D</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Line</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">direction</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param point: any point on the line</span>
+<span class="sd">        :type point: Scientific.Geometry.Vector</span>
+<span class="sd">        :param direction: the direction of the line</span>
+<span class="sd">        :type direction: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">point</span> <span class="o">=</span> <span class="n">point</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Line.distanceFrom"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Line.distanceFrom">[docs]</a>    <span class="k">def</span> <span class="nf">distanceFrom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param point: a point in space</span>
+<span class="sd">        :type point: Scientific.Geometry.Vector</span>
+<span class="sd">        :returns: the smallest distance of the point from the line</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">point</span><span class="o">-</span><span class="n">point</span>
+	<span class="n">d</span> <span class="o">=</span> <span class="n">d</span> <span class="o">-</span> <span class="p">(</span><span class="n">d</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span>
+	<span class="k">return</span> <span class="n">d</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Line.projectionOf"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Line.projectionOf">[docs]</a>    <span class="k">def</span> <span class="nf">projectionOf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param point: a point in space</span>
+<span class="sd">        :type point: Scientific.Geometry.Vector</span>
+<span class="sd">        :returns: the orthogonal projection of the point onto the line</span>
+<span class="sd">        :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">point</span><span class="o">-</span><span class="n">point</span>
+	<span class="n">d</span> <span class="o">=</span> <span class="n">d</span> <span class="o">-</span> <span class="p">(</span><span class="n">d</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span>
+	<span class="k">return</span> <span class="n">point</span><span class="o">+</span><span class="n">d</span>
+</div>
+<div class="viewcode-block" id="Line.perpendicularVector"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Line.perpendicularVector">[docs]</a>    <span class="k">def</span> <span class="nf">perpendicularVector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plane</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param plane: a plane</span>
+<span class="sd">        :type plane: Plane</span>
+<span class="sd">        :returns: a vector in the plane perpendicular to the line</span>
+<span class="sd">        :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">plane</span><span class="o">.</span><span class="n">normal</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Line(&#39;</span> <span class="o">+</span> <span class="sb">`self.point`</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.direction`</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+	<span class="k">return</span> <span class="mf">0.</span>
+
+</div>
+<span class="k">class</span> <span class="nc">LineSegment</span><span class="p">(</span><span class="n">Line</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point1</span><span class="p">,</span> <span class="n">point2</span><span class="p">):</span>
+        <span class="n">Line</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point1</span><span class="p">,</span> <span class="n">point2</span> <span class="o">-</span> <span class="n">point1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">point2</span> <span class="o">=</span> <span class="n">point2</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;LineSegment(&#39;</span> <span class="o">+</span> <span class="sb">`self.point`</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.point2`</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">distanceFrom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="n">pt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projectionOf</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">pt</span> <span class="o">-</span> <span class="n">point</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="n">d1</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">point</span> <span class="o">-</span> <span class="n">point</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="n">d2</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">point2</span> <span class="o">-</span> <span class="n">point</span><span class="p">)</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">d2</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">projectionOf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">point</span><span class="o">-</span><span class="n">point</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">d</span> <span class="o">-</span> <span class="p">(</span><span class="n">d</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span>
+        <span class="n">pt</span> <span class="o">=</span> <span class="n">point</span><span class="o">+</span><span class="n">d</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isWithin</span><span class="p">(</span><span class="n">pt</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">pt</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">isWithin</span><span class="p">(</span><span class="n">point</span><span class="p">):</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="n">point</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">point</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="n">point</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">point2</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">v1</span> <span class="o">*</span> <span class="n">v2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="n">Same_Dir</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Intersection calculations</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">_addIntersectFunction</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">class1</span><span class="p">,</span> <span class="n">class2</span><span class="p">):</span>
+    <span class="n">switch</span> <span class="o">=</span> <span class="n">class1</span> <span class="o">&gt;</span> <span class="n">class2</span>
+    <span class="k">if</span> <span class="n">switch</span><span class="p">:</span>
+	<span class="n">class1</span><span class="p">,</span> <span class="n">class2</span> <span class="o">=</span> <span class="n">class2</span><span class="p">,</span> <span class="n">class1</span>
+    <span class="n">_intersectTable</span><span class="p">[(</span><span class="n">class1</span><span class="p">,</span> <span class="n">class2</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">switch</span><span class="p">)</span>
+
+
+<span class="c"># Box with box</span>
+
+<span class="k">def</span> <span class="nf">_intersectBoxBox</span><span class="p">(</span><span class="n">box1</span><span class="p">,</span> <span class="n">box2</span><span class="p">):</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">box1</span><span class="o">.</span><span class="n">corners</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">box2</span><span class="o">.</span><span class="n">corners</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">c2</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">box1</span><span class="o">.</span><span class="n">corners</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">box2</span><span class="o">.</span><span class="n">corners</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">N</span><span class="o">.</span><span class="n">logical_or</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">greater_equal</span><span class="p">(</span><span class="n">c1</span><span class="p">,</span> <span class="n">c2</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">return</span> <span class="n">Box</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="n">c1</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="n">c2</span><span class="p">))</span>
+
+<span class="n">_addIntersectFunction</span><span class="p">(</span><span class="n">_intersectBoxBox</span><span class="p">,</span> <span class="n">Box</span><span class="p">,</span> <span class="n">Box</span><span class="p">)</span>
+
+<span class="c"># Sphere with sphere</span>
+
+<span class="k">def</span> <span class="nf">_intersectSphereSphere</span><span class="p">(</span><span class="n">sphere1</span><span class="p">,</span> <span class="n">sphere2</span><span class="p">):</span>
+    <span class="n">r1r2</span> <span class="o">=</span> <span class="n">sphere2</span><span class="o">.</span><span class="n">center</span><span class="o">-</span><span class="n">sphere1</span><span class="o">.</span><span class="n">center</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">r1r2</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">d</span> <span class="o">&gt;</span> <span class="n">sphere1</span><span class="o">.</span><span class="n">radius</span><span class="o">+</span><span class="n">sphere2</span><span class="o">.</span><span class="n">radius</span><span class="p">:</span>
+	<span class="k">return</span> <span class="bp">None</span>
+    <span class="k">if</span> <span class="n">d</span><span class="o">+</span><span class="nb">min</span><span class="p">(</span><span class="n">sphere1</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span> <span class="n">sphere2</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span> <span class="o">&lt;</span> \
+                             <span class="nb">max</span><span class="p">(</span><span class="n">sphere1</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span> <span class="n">sphere2</span><span class="o">.</span><span class="n">radius</span><span class="p">):</span>
+	<span class="k">return</span> <span class="bp">None</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">d</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">sphere1</span><span class="o">.</span><span class="n">radius</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">sphere2</span><span class="o">.</span><span class="n">radius</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">d</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sphere1</span><span class="o">.</span><span class="n">radius</span><span class="o">**</span><span class="mi">2</span><span class="o">-</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">normal</span> <span class="o">=</span> <span class="n">r1r2</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">Circle</span><span class="p">(</span><span class="n">sphere1</span><span class="o">.</span><span class="n">center</span> <span class="o">+</span> <span class="n">x</span><span class="o">*</span><span class="n">normal</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+
+<span class="n">_addIntersectFunction</span><span class="p">(</span><span class="n">_intersectSphereSphere</span><span class="p">,</span> <span class="n">Sphere</span><span class="p">,</span> <span class="n">Sphere</span><span class="p">)</span>
+
+<span class="c"># Sphere with cone</span>
+
+<span class="k">def</span> <span class="nf">_intersectSphereCone</span><span class="p">(</span><span class="n">sphere</span><span class="p">,</span> <span class="n">cone</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">sphere</span><span class="o">.</span><span class="n">center</span> <span class="o">!=</span> <span class="n">cone</span><span class="o">.</span><span class="n">center</span><span class="p">:</span>
+	<span class="k">raise</span> <span class="n">GeomError</span><span class="p">(</span><span class="s">&quot;Not yet implemented&quot;</span><span class="p">)</span>
+    <span class="n">from_center</span> <span class="o">=</span> <span class="n">sphere</span><span class="o">.</span><span class="n">radius</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">cone</span><span class="o">.</span><span class="n">angle</span><span class="p">)</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="n">sphere</span><span class="o">.</span><span class="n">radius</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">cone</span><span class="o">.</span><span class="n">angle</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Circle</span><span class="p">(</span><span class="n">cone</span><span class="o">.</span><span class="n">center</span><span class="o">+</span><span class="n">from_center</span><span class="o">*</span><span class="n">cone</span><span class="o">.</span><span class="n">axis</span><span class="p">,</span> <span class="n">cone</span><span class="o">.</span><span class="n">axis</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span>
+
+<span class="n">_addIntersectFunction</span><span class="p">(</span><span class="n">_intersectSphereCone</span><span class="p">,</span> <span class="n">Sphere</span><span class="p">,</span> <span class="n">Cone</span><span class="p">)</span>
+
+<span class="c"># Plane with plane</span>
+
+<span class="k">def</span> <span class="nf">_intersectPlanePlane</span><span class="p">(</span><span class="n">plane1</span><span class="p">,</span> <span class="n">plane2</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">plane1</span><span class="o">.</span><span class="n">normal</span><span class="o">*</span><span class="n">plane2</span><span class="o">.</span><span class="n">normal</span><span class="p">)</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+	<span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">plane1</span><span class="o">.</span><span class="n">distance_from_zero</span><span class="o">-</span><span class="n">plane2</span><span class="o">.</span><span class="n">distance_from_zero</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="n">plane1</span>
+	<span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">else</span><span class="p">:</span>
+	<span class="n">direction</span> <span class="o">=</span> <span class="n">plane1</span><span class="o">.</span><span class="n">normal</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">plane2</span><span class="o">.</span><span class="n">normal</span><span class="p">)</span>
+	<span class="n">point_in_1</span> <span class="o">=</span> <span class="n">plane1</span><span class="o">.</span><span class="n">distance_from_zero</span><span class="o">*</span><span class="n">plane1</span><span class="o">.</span><span class="n">normal</span>
+	<span class="n">point_in_both</span> <span class="o">=</span> <span class="n">point_in_1</span> <span class="o">-</span> <span class="p">(</span><span class="n">point_in_1</span><span class="o">*</span><span class="n">plane2</span><span class="o">.</span><span class="n">normal</span> <span class="o">-</span>
+				      <span class="n">plane2</span><span class="o">.</span><span class="n">distance_from_zero</span><span class="p">)</span><span class="o">*</span><span class="n">plane2</span><span class="o">.</span><span class="n">normal</span>
+	<span class="k">return</span> <span class="n">Line</span><span class="p">(</span><span class="n">point_in_both</span><span class="p">,</span> <span class="n">direction</span><span class="p">)</span>
+
+<span class="n">_addIntersectFunction</span><span class="p">(</span><span class="n">_intersectPlanePlane</span><span class="p">,</span> <span class="n">Plane</span><span class="p">,</span> <span class="n">Plane</span><span class="p">)</span>
+
+<span class="c"># Circle with plane</span>
+
+<span class="k">def</span> <span class="nf">_intersectCirclePlane</span><span class="p">(</span><span class="n">circle</span><span class="p">,</span> <span class="n">plane</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">circle</span><span class="o">.</span><span class="n">normal</span><span class="o">*</span><span class="n">plane</span><span class="o">.</span><span class="n">normal</span><span class="p">)</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+	<span class="k">if</span> <span class="n">plane</span><span class="o">.</span><span class="n">hasPoint</span><span class="p">(</span><span class="n">circle</span><span class="o">.</span><span class="n">center</span><span class="p">):</span>
+	    <span class="k">return</span> <span class="n">circle</span>
+	<span class="k">else</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">else</span><span class="p">:</span>
+	<span class="n">line</span> <span class="o">=</span> <span class="n">plane</span><span class="o">.</span><span class="n">intersectWith</span><span class="p">(</span><span class="n">Plane</span><span class="p">(</span><span class="n">circle</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="n">circle</span><span class="o">.</span><span class="n">normal</span><span class="p">))</span>
+	<span class="n">x</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">distanceFrom</span><span class="p">(</span><span class="n">circle</span><span class="o">.</span><span class="n">center</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">circle</span><span class="o">.</span><span class="n">radius</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="bp">None</span>
+	<span class="k">else</span><span class="p">:</span>
+	    <span class="n">angle</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">x</span><span class="o">/</span><span class="n">circle</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span>
+	    <span class="n">along_line</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span><span class="o">*</span><span class="n">circle</span><span class="o">.</span><span class="n">radius</span>
+	    <span class="n">normal</span> <span class="o">=</span> <span class="n">circle</span><span class="o">.</span><span class="n">normal</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">direction</span><span class="p">)</span>
+	    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">distanceFrom</span><span class="p">(</span><span class="n">circle</span><span class="o">.</span><span class="n">center</span><span class="o">+</span><span class="n">normal</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">x</span><span class="p">:</span>
+		<span class="n">normal</span> <span class="o">=</span> <span class="o">-</span><span class="n">normal</span>
+	    <span class="k">return</span> <span class="p">(</span><span class="n">circle</span><span class="o">.</span><span class="n">center</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">normal</span><span class="o">-</span><span class="n">along_line</span><span class="o">*</span><span class="n">line</span><span class="o">.</span><span class="n">direction</span><span class="p">,</span>
+		    <span class="n">circle</span><span class="o">.</span><span class="n">center</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">normal</span><span class="o">+</span><span class="n">along_line</span><span class="o">*</span><span class="n">line</span><span class="o">.</span><span class="n">direction</span><span class="p">)</span>
+	    
+<span class="n">_addIntersectFunction</span><span class="p">(</span><span class="n">_intersectCirclePlane</span><span class="p">,</span> <span class="n">Circle</span><span class="p">,</span> <span class="n">Plane</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Rotation</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">rotateDirection</span><span class="p">(</span><span class="n">vector</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="mi">1</span><span class="o">-</span><span class="n">c</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">axis</span><span class="o">.</span><span class="n">direction</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">s</span><span class="o">*</span><span class="n">axis</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span><span class="o">*</span><span class="p">(</span><span class="n">axis</span><span class="o">*</span><span class="n">vector</span><span class="p">)</span><span class="o">*</span><span class="n">axis</span> <span class="o">+</span> <span class="n">c</span><span class="o">*</span><span class="n">vector</span>
+
+<span class="k">def</span> <span class="nf">rotatePoint</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">axis</span><span class="o">.</span><span class="n">point</span> <span class="o">+</span> <span class="n">rotateDirection</span><span class="p">(</span><span class="n">point</span><span class="o">-</span><span class="n">axis</span><span class="o">.</span><span class="n">point</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Lattices</span>
+<span class="c">#</span>
+
+<span class="c">#</span>
+<span class="c"># Lattice base class</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="Lattice"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.Lattice">[docs]</a><span class="k">class</span> <span class="nc">Lattice</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    General lattice</span>
+
+<span class="sd">    Lattices are special sequence objects that contain vectors</span>
+<span class="sd">    (points on the lattice) or objects that are constructed as</span>
+<span class="sd">    functions of these vectors. Lattice objects behave like</span>
+<span class="sd">    lists, i.e. they permit indexing, length inquiry, and iteration</span>
+<span class="sd">    by &#39;for&#39;-loops. Note that the lattices represented by these</span>
+<span class="sd">    objects are finite, they have a finite (and fixed) number</span>
+<span class="sd">    of repetitions along each lattice vector.</span>
+
+<span class="sd">    This is an abstract base class. To create lattice objects,</span>
+<span class="sd">    use one of its subclasses.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">):</span>
+	<span class="k">if</span> <span class="n">function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+	<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+	<span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># General rhombic lattice</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="RhombicLattice"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.RhombicLattice">[docs]</a><span class="k">class</span> <span class="nc">RhombicLattice</span><span class="p">(</span><span class="n">Lattice</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rhombic lattice</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">elementary_cell</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span>
+                 <span class="n">function</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param elementary_cell: a list of points in the elementary cell</span>
+<span class="sd">        :param lattice_vectors: a list of lattice vectors. Each lattice</span>
+<span class="sd">                                vector defines a lattice dimension (only</span>
+<span class="sd">                                values from one to three make sense) and</span>
+<span class="sd">                                indicates the displacement along this</span>
+<span class="sd">                                dimension from one cell to the next.</span>
+<span class="sd">        :param cells: a list of integers, whose length must equal the number</span>
+<span class="sd">                      of dimensions. Each entry specifies how often a cell is</span>
+<span class="sd">                      repeated along this dimension.</span>
+<span class="sd">        :param function: a function that is called for every lattice point with</span>
+<span class="sd">                         the vector describing the point as argument. The return</span>
+<span class="sd">                         value of this function is stored in the lattice object.</span>
+<span class="sd">                         If the function is &#39;None&#39;, the vector is directly</span>
+<span class="sd">                         stored in the lattice object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lattice_vectors</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">):</span>
+	    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Inconsistent dimension specification&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">base</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="n">Vector</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lattice_vectors</span><span class="p">)</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">makeLattice</span><span class="p">(</span><span class="n">elementary_cell</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+	<span class="n">Lattice</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">makeLattice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">elementary_cell</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span> <span class="n">base</span><span class="p">):</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+	    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">elementary_cell</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">base</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+	    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cells</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">makeLattice</span><span class="p">(</span><span class="n">elementary_cell</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span>
+				 <span class="n">cells</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">base</span><span class="o">+</span><span class="n">i</span><span class="o">*</span><span class="n">lattice_vectors</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+	    
+<span class="c">#</span>
+<span class="c"># Bravais lattice</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="BravaisLattice"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.BravaisLattice">[docs]</a><span class="k">class</span> <span class="nc">BravaisLattice</span><span class="p">(</span><span class="n">RhombicLattice</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bravais lattice</span>
+
+<span class="sd">    A Bravais lattice is a special case of a general rhombic lattice</span>
+<span class="sd">    in which the elementary cell contains only one point.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param lattice_vectors: a list of lattice vectors. Each lattice</span>
+<span class="sd">                                vector defines a lattice dimension (only</span>
+<span class="sd">                                values from one to three make sense) and</span>
+<span class="sd">                                indicates the displacement along this</span>
+<span class="sd">                                dimension from one cell to the next.</span>
+<span class="sd">        :param cells: a list of integers, whose length must equal the number</span>
+<span class="sd">                      of dimensions. Each entry specifies how often a cell is</span>
+<span class="sd">                      repeated along this dimension.</span>
+<span class="sd">        :param function: a function that is called for every lattice point with</span>
+<span class="sd">                         the vector describing the point as argument. The return</span>
+<span class="sd">                         value of this function is stored in the lattice object.</span>
+<span class="sd">                         If the function is &#39;None&#39;, the vector is directly</span>
+<span class="sd">                         stored in the lattice object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="n">cell</span> <span class="o">=</span> <span class="p">[</span><span class="n">Vector</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)]</span>
+	<span class="n">RhombicLattice</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span>
+                                <span class="n">function</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Simple cubic lattice</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="SCLattice"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.SCLattice">[docs]</a><span class="k">class</span> <span class="nc">SCLattice</span><span class="p">(</span><span class="n">BravaisLattice</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple Cubic lattice</span>
+
+<span class="sd">    A Simple Cubic lattice is a special case of a Bravais lattice</span>
+<span class="sd">    in which the elementary cell is a cube.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cellsize</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param cellsize: the edge length of the elementary cell</span>
+<span class="sd">        :type cellsize: float</span>
+<span class="sd">        :param cells: a list of integers, whose length must equal the number</span>
+<span class="sd">                      of dimensions. Each entry specifies how often a cell is</span>
+<span class="sd">                      repeated along this dimension.</span>
+<span class="sd">        :param function: a function that is called for every lattice point with</span>
+<span class="sd">                         the vector describing the point as argument. The return</span>
+<span class="sd">                         value of this function is stored in the lattice object.</span>
+<span class="sd">                         If the function is &#39;None&#39;, the vector is directly</span>
+<span class="sd">                         stored in the lattice object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="n">lattice_vectors</span> <span class="o">=</span> <span class="p">(</span><span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span>
+                           <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span>
+                           <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+	<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(()):</span>
+	    <span class="n">cells</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">cells</span><span class="p">,)</span>
+	<span class="n">BravaisLattice</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Body-centered cubic lattice</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="BCCLattice"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.BCCLattice">[docs]</a><span class="k">class</span> <span class="nc">BCCLattice</span><span class="p">(</span><span class="n">RhombicLattice</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Body-Centered Cubic lattice</span>
+
+<span class="sd">    A Body-Centered Cubic lattice has two points per elementary cell.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cellsize</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param cellsize: the edge length of the elementary cell</span>
+<span class="sd">        :type cellsize: float</span>
+<span class="sd">        :param cells: a list of integers, whose length must equal the number</span>
+<span class="sd">                      of dimensions. Each entry specifies how often a cell is</span>
+<span class="sd">                      repeated along this dimension.</span>
+<span class="sd">        :param function: a function that is called for every lattice point with</span>
+<span class="sd">                         the vector describing the point as argument. The return</span>
+<span class="sd">                         value of this function is stored in the lattice object.</span>
+<span class="sd">                         If the function is &#39;None&#39;, the vector is directly</span>
+<span class="sd">                         stored in the lattice object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="p">[</span><span class="n">Vector</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">)]</span>
+	<span class="n">lattice_vectors</span> <span class="o">=</span> <span class="p">(</span><span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span>
+                           <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span>
+                           <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+	<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(()):</span>
+	    <span class="n">cells</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">cells</span><span class="p">,)</span>
+	<span class="n">RhombicLattice</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span>
+                                <span class="n">function</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Face-centered cubic lattice</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="FCCLattice"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.FCCLattice">[docs]</a><span class="k">class</span> <span class="nc">FCCLattice</span><span class="p">(</span><span class="n">RhombicLattice</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;Face-Centered Cubic lattice</span>
+
+<span class="sd">    A Face-Centered Cubic lattice has four points per elementary cell.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cellsize</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param cellsize: the edge length of the elementary cell</span>
+<span class="sd">        :type cellsize: float</span>
+<span class="sd">        :param cells: a list of integers, whose length must equal the number</span>
+<span class="sd">                      of dimensions. Each entry specifies how often a cell is</span>
+<span class="sd">                      repeated along this dimension.</span>
+<span class="sd">        :param function: a function that is called for every lattice point with</span>
+<span class="sd">                         the vector describing the point as argument. The return</span>
+<span class="sd">                         value of this function is stored in the lattice object.</span>
+<span class="sd">                         If the function is &#39;None&#39;, the vector is directly</span>
+<span class="sd">                         stored in the lattice object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="p">[</span><span class="n">Vector</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+                <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span>  <span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">),</span>
+                <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">),</span>
+                <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span>  <span class="mi">0</span><span class="p">)]</span>
+	<span class="n">lattice_vectors</span> <span class="o">=</span> <span class="p">(</span><span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span>
+                           <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span>
+                           <span class="n">cellsize</span><span class="o">*</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+	<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(()):</span>
+	    <span class="n">cells</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">cells</span><span class="p">,)</span>
+	<span class="n">RhombicLattice</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">lattice_vectors</span><span class="p">,</span> <span class="n">cells</span><span class="p">,</span>
+                                <span class="n">function</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Optimal superposition of a molecule in two configurations</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="superpositionFit"><a class="viewcode-back" href="../../modules.html#MMTK.Geometry.superpositionFit">[docs]</a><span class="k">def</span> <span class="nf">superpositionFit</span><span class="p">(</span><span class="n">confs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param confs: the weight, reference position, and alternate</span>
+<span class="sd">                  position for each atom</span>
+<span class="sd">    :type confs: sequence of (float, Vector, Vector)</span>
+<span class="sd">    :returns: the quaternion representing the rotation,</span>
+<span class="sd">              the center of mass in the alternate configuraton,</span>
+<span class="sd">              the center of mass in the reference configuration,</span>
+<span class="sd">              and the RMS distance after the optimal superposition</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">w_sum</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="n">wr_sum</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">w</span><span class="p">,</span> <span class="n">r_ref</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">confs</span><span class="p">:</span>
+        <span class="n">w_sum</span> <span class="o">+=</span> <span class="n">w</span>
+        <span class="n">wr_sum</span> <span class="o">+=</span> <span class="n">w</span><span class="o">*</span><span class="n">r_ref</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">ref_cms</span> <span class="o">=</span> <span class="n">wr_sum</span><span class="o">/</span><span class="n">w_sum</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="n">possq</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="n">cross</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">w</span><span class="p">,</span> <span class="n">r_ref</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">confs</span><span class="p">:</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">w</span><span class="o">/</span><span class="n">w_sum</span>
+        <span class="n">r_ref</span> <span class="o">=</span> <span class="n">r_ref</span><span class="o">.</span><span class="n">array</span><span class="o">-</span><span class="n">ref_cms</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">pos</span> <span class="o">+</span> <span class="n">w</span><span class="o">*</span><span class="n">r</span>
+        <span class="n">possq</span> <span class="o">=</span> <span class="n">possq</span> <span class="o">+</span> <span class="n">w</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">r</span><span class="o">*</span><span class="n">r</span><span class="p">)</span> \
+                      <span class="o">+</span> <span class="n">w</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">r_ref</span><span class="o">*</span><span class="n">r_ref</span><span class="p">)</span>
+        <span class="n">cross</span> <span class="o">=</span> <span class="n">cross</span> <span class="o">+</span> <span class="n">w</span><span class="o">*</span><span class="n">r</span><span class="p">[:,</span> <span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">]</span><span class="o">*</span><span class="n">r_ref</span><span class="p">[</span><span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">cross</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">cross</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">cross</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">k</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">cross</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">cross</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+            <span class="n">k</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">k</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">k</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">possq</span> <span class="o">-</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">pos</span><span class="o">*</span><span class="n">pos</span><span class="p">)</span>
+    <span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">LA</span>
+    <span class="n">e</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">LA</span><span class="o">.</span><span class="n">eigenvectors</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span> <span class="n">v</span> <span class="o">=</span> <span class="o">-</span><span class="n">v</span>
+    <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mf">0.</span><span class="p">:</span>
+        <span class="n">rms</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rms</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Quaternion</span>
+    <span class="k">return</span> <span class="n">Quaternion</span><span class="o">.</span><span class="n">Quaternion</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="n">ref_cms</span><span class="p">),</span> \
+           <span class="n">Vector</span><span class="p">(</span><span class="n">pos</span><span class="p">),</span> <span class="n">rms</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

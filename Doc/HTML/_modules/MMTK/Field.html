@@ -1,0 +1,423 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Field &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Field</h1><div class="highlight"><pre>
+<span class="c"># This module defines scalar and vector fields in molecular systems</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Scalar and vector fields in molecular systems</span>
+
+<span class="sd">This module defines field objects that are useful in the analysis</span>
+<span class="sd">and visualization of collective motions in molecular systems. Atomic</span>
+<span class="sd">quantities characterizing collective motions vary slowly in space, and</span>
+<span class="sd">can be considered functions of position instead of values per atom.</span>
+<span class="sd">Functions of position are called fields, and mathematical techniques</span>
+<span class="sd">for the analysis of fields have proven useful in many branches of</span>
+<span class="sd">physics. Fields can be described numerically by values on a</span>
+<span class="sd">regular grid. In addition to permitting the application of vector</span>
+<span class="sd">analysis methods to atomic quantities, the introduction of</span>
+<span class="sd">fields is a valuable visualization aid, because information defined on</span>
+<span class="sd">a coarse regular grid can be added to a picture of a molecular system</span>
+<span class="sd">without overloading it.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Collections</span><span class="p">,</span> <span class="n">ParticleProperties</span><span class="p">,</span> <span class="n">Visualization</span>
+<span class="kn">from</span> <span class="nn">Scientific.Visualization</span> <span class="kn">import</span> <span class="n">Color</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span><span class="p">,</span> <span class="n">TensorAnalysis</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+
+<div class="viewcode-block" id="AtomicField"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicField">[docs]</a><span class="k">class</span> <span class="nc">AtomicField</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A field whose values are determined by atomic quantities</span>
+
+<span class="sd">    This is an abstract base class. To create field objects,</span>
+<span class="sd">    use one of its subclasses.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">system</span> <span class="o">=</span> <span class="n">system</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">grid_size</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span> <span class="o">=</span> <span class="n">grid_size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">values</span><span class="o">.</span><span class="n">data_rank</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;data not a particle variable&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">box</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="n">PartitionedAtomCollection</span><span class="p">(</span><span class="n">grid_size</span><span class="p">,</span> <span class="n">system</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_setField</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_setField</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">default_color</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">ColorByName</span><span class="p">(</span><span class="s">&#39;black&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">,</span> <span class="n">atoms</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">partitions</span><span class="p">():</span>
+            <span class="n">center</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="nb">min</span><span class="o">+</span><span class="nb">max</span><span class="p">)</span>
+            <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">center</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
+            <span class="n">total_weight</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">default_color</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">-</span><span class="n">center</span>
+                <span class="n">weight</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="o">*</span><span class="n">d</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">partition_size</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="n">weight</span><span class="o">*</span><span class="n">data</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+                <span class="n">total_weight</span> <span class="o">=</span> <span class="n">total_weight</span> <span class="o">+</span> <span class="n">weight</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="n">default_color</span>
+                <span class="k">try</span><span class="p">:</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">color</span>
+                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> <span class="k">pass</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+                    <span class="n">c</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">ColorByName</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="n">color</span> <span class="o">+</span> <span class="n">c</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="o">/</span><span class="n">total_weight</span><span class="p">)</span>
+            <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
+        <span class="nb">min</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+        <span class="nb">max</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">min</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">max</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">partition_size</span><span class="p">),</span>
+                <span class="n">N</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">min</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">max</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">partition_size</span><span class="p">),</span>
+                <span class="n">N</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">min</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="nb">max</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">partition_size</span><span class="p">))</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">len</span><span class="p">,</span> <span class="n">axes</span><span class="p">))</span> <span class="o">+</span> <span class="n">data</span><span class="o">.</span><span class="n">value_rank</span><span class="o">*</span><span class="p">(</span><span class="mi">3</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="n">inside</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">len</span><span class="p">,</span> <span class="n">axes</span><span class="p">)),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">floor</span><span class="p">((</span><span class="n">p</span><span class="o">-</span><span class="nb">min</span><span class="p">)</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">partition_size</span><span class="o">+</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">indices</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">))</span>
+            <span class="n">array</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="n">inside</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_class</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">zero</span><span class="p">())</span>
+        <span class="n">inside</span> <span class="o">=</span> <span class="n">TensorAnalysis</span><span class="o">.</span><span class="n">ScalarField</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">inside</span><span class="p">)</span><span class="o">.</span><span class="n">gradient</span><span class="p">()</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">)):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">test</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">test</span> <span class="o">=</span> <span class="nb">apply</span><span class="p">(</span><span class="n">inside</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mf">1.e-10</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span> <span class="k">pass</span>
+            <span class="k">if</span> <span class="n">test</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AtomicField.particleValues"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicField.particleValues">[docs]</a>    <span class="k">def</span> <span class="nf">particleValues</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the values of the field at the positions of the atoms</span>
+<span class="sd">        :rtype: :class:`~MMTK.ParticleProperties.ParticleProperty`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="o">.</span><span class="n">rank</span>
+        <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleScalar</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;no appropriate return type&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+            <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">v</span>
+</div>
+<div class="viewcode-block" id="AtomicField.writeToFile"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicField.writeToFile">[docs]</a>    <span class="k">def</span> <span class="nf">writeToFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">,</span> <span class="n">length_scale</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Writes a graphical representation of the field to a VRML file.</span>
+
+<span class="sd">        :param filename: the name of the destination file</span>
+<span class="sd">        :type filename: str</span>
+<span class="sd">        :param scale: scale factor applied to all field values</span>
+<span class="sd">        :type scale: float</span>
+<span class="sd">        :param color: the color for all graphics objects</span>
+<span class="sd">        :type color: Scientific.Visualization.Color</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">Scientific.Visualization</span> <span class="kn">import</span> <span class="n">VRML2</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graphicsObjects</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span>
+                                       <span class="n">length_scale</span><span class="o">=</span><span class="n">length_scale</span><span class="p">,</span>
+                                       <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                                       <span class="n">graphics_module</span><span class="o">=</span><span class="n">VRML2</span><span class="p">)</span>
+        <span class="n">VRML2</span><span class="o">.</span><span class="n">Scene</span><span class="p">(</span><span class="n">objects</span><span class="p">)</span><span class="o">.</span><span class="n">writeToFile</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AtomicField.view"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicField.view">[docs]</a>    <span class="k">def</span> <span class="nf">view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">,</span> <span class="n">length_scale</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Shows a graphical representation of the field using a VRML viewer.</span>
+
+<span class="sd">        :param scale: scale factor applied to all field values</span>
+<span class="sd">        :type scale: float</span>
+<span class="sd">        :param color: the color for all graphics objects</span>
+<span class="sd">        :type color: Scientific.Visualization.Color</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">Scientific.Visualization</span> <span class="kn">import</span> <span class="n">VRML2</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graphicsObjects</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span>
+                                       <span class="n">length_scale</span><span class="o">=</span><span class="n">length_scale</span><span class="p">,</span>
+                                       <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                                       <span class="n">graphics_module</span><span class="o">=</span><span class="n">VRML2</span><span class="p">)</span>
+        <span class="n">VRML2</span><span class="o">.</span><span class="n">Scene</span><span class="p">(</span><span class="n">objects</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">()</span>
+
+</div></div>
+<div class="viewcode-block" id="AtomicScalarField"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicScalarField">[docs]</a><span class="k">class</span> <span class="nc">AtomicScalarField</span><span class="p">(</span><span class="n">AtomicField</span><span class="p">,</span> <span class="n">Visualization</span><span class="o">.</span><span class="n">Viewable</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scalar field defined by atomic quantities</span>
+
+<span class="sd">    For visualization, scalar fields are represented by a small cube</span>
+<span class="sd">    on each grid point whose color indicates the field&#39;s value on a symmetric</span>
+<span class="sd">    red-to-green color scale defined by the range of the field values.</span>
+
+<span class="sd">    Additional keyword options exist for graphics object generation:</span>
+<span class="sd">      - scale=factor, to multiply all field values by a factor</span>
+<span class="sd">      - range=(min, max), to eliminate graphics objects for values</span>
+<span class="sd">        that are smaller than min or larger than max</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param system: any subset of a molecular system</span>
+<span class="sd">        :param grid_size: the spacing of a cubic grid on which the field</span>
+<span class="sd">                          values are defined. The value for a point is obtained</span>
+<span class="sd">                          by averaging the atomic quantities over all</span>
+<span class="sd">                          atoms in a cube centered on the point.</span>
+<span class="sd">        :type grid_size: float</span>
+<span class="sd">        :param values: the atomic values that define the field</span>
+<span class="sd">        :type values: :class:`~MMTK.ParticleProperties.ParticleScalar`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">values</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;data not a vector field&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">field_class</span> <span class="o">=</span> <span class="n">TensorAnalysis</span><span class="o">.</span><span class="n">ScalarField</span>
+        <span class="n">AtomicField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AtomicScalarField.gradient"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicScalarField.gradient">[docs]</a>    <span class="k">def</span> <span class="nf">gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the gradient of the field</span>
+<span class="sd">        :rtype: :class:`~MMTK.Field.AtomicVectorField`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="o">.</span><span class="n">gradient</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">AtomicVectorField</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">),</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AtomicScalarField.laplacian"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicScalarField.laplacian">[docs]</a>    <span class="k">def</span> <span class="nf">laplacian</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the laplacian of the field</span>
+<span class="sd">        :rtype: :class:`~MMTK.Field.AtomicScalarField`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="o">.</span><span class="n">laplacian</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">AtomicScalarField</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">),</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_graphics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">distance_fn</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;scale&#39;</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+        <span class="nb">range</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;range&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+        <span class="n">length_scale</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;length_scale&#39;</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+
+        <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span> <span class="o">=</span> <span class="nb">range</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">partition_size</span><span class="o">/</span><span class="mf">10.</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">color_scale</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">SymmetricColorScale</span><span class="p">(</span><span class="mf">1.</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="nb">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">lower</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="n">lower</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">upper</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="n">upper</span><span class="p">):</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="nb">apply</span><span class="p">(</span><span class="n">Vector</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">scale</span><span class="o">*</span><span class="n">v</span>
+                <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">1.</span> <span class="ow">or</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mf">1.</span><span class="p">:</span>
+                    <span class="n">m</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">DiffuseMaterial</span><span class="p">(</span><span class="s">&#39;black&#39;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">m</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">Material</span><span class="p">(</span><span class="n">diffuse_color</span> <span class="o">=</span> <span class="n">color_scale</span><span class="p">(</span><span class="n">scale</span><span class="o">*</span><span class="n">v</span><span class="p">))</span>
+                <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Cube</span><span class="p">(</span><span class="n">length_scale</span><span class="o">*</span><span class="n">p</span><span class="p">,</span>
+                                           <span class="n">length_scale</span><span class="o">*</span><span class="n">size</span><span class="p">,</span>
+                                           <span class="n">material</span> <span class="o">=</span> <span class="n">m</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">objects</span>
+
+</div>
+<div class="viewcode-block" id="AtomicVectorField"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicVectorField">[docs]</a><span class="k">class</span> <span class="nc">AtomicVectorField</span><span class="p">(</span><span class="n">AtomicField</span><span class="p">,</span> <span class="n">Visualization</span><span class="o">.</span><span class="n">Viewable</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Vector field defined by atomic quantities</span>
+
+<span class="sd">    For visualization, scalar fields are represented by a small arrow</span>
+<span class="sd">    on each grid point. The arrow starts at the grid point and represents</span>
+<span class="sd">    the vector value at that point.</span>
+<span class="sd">    </span>
+<span class="sd">    Additional keyword options exist for graphics object generation:</span>
+<span class="sd">      - scale=factor, to multiply all field values by a factor</span>
+<span class="sd">      - diameter=number, to define the diameter of the arrow objects</span>
+<span class="sd">        (default: 1.)</span>
+<span class="sd">      - range=(min, max), to eliminate graphics objects for values</span>
+<span class="sd">        that are smaller than min or larger than max</span>
+<span class="sd">      - color=string, to define the color of the arrows by a color name</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param system: any subset of a molecular system</span>
+<span class="sd">        :param grid_size: the spacing of a cubic grid on which the field</span>
+<span class="sd">                          values are defined. The value for a point is obtained</span>
+<span class="sd">                          by averaging the atomic quantities over all</span>
+<span class="sd">                          atoms in a cube centered on the point.</span>
+<span class="sd">        :type grid_size: float</span>
+<span class="sd">        :param values: the atomic values that define the field</span>
+<span class="sd">        :type values: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">values</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;data not a vector field&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">field_class</span> <span class="o">=</span> <span class="n">TensorAnalysis</span><span class="o">.</span><span class="n">VectorField</span>
+        <span class="n">AtomicField</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AtomicVectorField.length"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicVectorField.length">[docs]</a>    <span class="k">def</span> <span class="nf">length</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a field of the length of the field vectors</span>
+<span class="sd">        :rtype: :class:`~MMTK.Field.AtomicScalarField`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">AtomicScalarField</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">),</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AtomicVectorField.divergence"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicVectorField.divergence">[docs]</a>    <span class="k">def</span> <span class="nf">divergence</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the divergence of the field</span>
+<span class="sd">        :rtype: :class:`~MMTK.Field.AtomicScalarField`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="o">.</span><span class="n">divergence</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">AtomicScalarField</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">),</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AtomicVectorField.curl"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicVectorField.curl">[docs]</a>    <span class="k">def</span> <span class="nf">curl</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the curl of the field</span>
+<span class="sd">        :rtype: :class:`~MMTK.Field.AtomicVectorField`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="o">.</span><span class="n">curl</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">AtomicVectorField</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">),</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AtomicVectorField.laplacian"><a class="viewcode-back" href="../../modules.html#MMTK.Field.AtomicVectorField.laplacian">[docs]</a>    <span class="k">def</span> <span class="nf">laplacian</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the laplacian of the field</span>
+<span class="sd">        :rtype: :class:`~MMTK.Field.AtomicVectorField`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="o">.</span><span class="n">curl</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">AtomicVectorField</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">),</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_graphics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">distance_fn</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;scale&#39;</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+        <span class="n">diameter</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;diameter&#39;</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;color&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="nb">range</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;range&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+        <span class="n">length_scale</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;length_scale&#39;</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+
+        <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span> <span class="o">=</span> <span class="nb">range</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">diameter</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">partition_size</span><span class="o">/</span><span class="mf">50.</span>
+        <span class="k">if</span> <span class="n">color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">ColorByName</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">materials</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="nb">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+            <span class="n">lv</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">lower</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">lv</span> <span class="o">&gt;</span> <span class="n">lower</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">upper</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">lv</span> <span class="o">&lt;</span> <span class="n">upper</span><span class="p">):</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="nb">apply</span><span class="p">(</span><span class="n">Vector</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">c</span> <span class="o">=</span> <span class="n">color</span>
+                <span class="k">try</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">materials</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="n">m</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">Material</span><span class="p">(</span><span class="n">diffuse_color</span> <span class="o">=</span> <span class="n">c</span><span class="p">)</span>
+                <span class="n">materials</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+                <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Arrow</span><span class="p">(</span><span class="n">length_scale</span><span class="o">*</span><span class="n">p</span><span class="p">,</span>
+                                            <span class="n">length_scale</span><span class="o">*</span><span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">scale</span><span class="o">*</span><span class="n">v</span><span class="p">),</span>
+                                            <span class="n">length_scale</span><span class="o">*</span><span class="n">size</span><span class="p">,</span>
+                                            <span class="n">material</span> <span class="o">=</span> <span class="n">m</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">objects</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,209 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.ForceFields.ForceFieldTest &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.ForceFields.ForceFieldTest</h1><div class="highlight"><pre>
+<span class="c"># This module implements test functions.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Force field consistency tests</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span><span class="p">,</span> <span class="n">ex</span><span class="p">,</span> <span class="n">ey</span><span class="p">,</span> <span class="n">ez</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+
+<span class="c">#</span>
+<span class="c"># Check consistency of energies and gradients.</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="gradientTest"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.ForceFieldTest.gradientTest">[docs]</a><span class="k">def</span> <span class="nf">gradientTest</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">atoms</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">delta</span> <span class="o">=</span> <span class="mf">0.0001</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Test gradients by comparing to numerical derivatives of the energy.</span>
+
+<span class="sd">    :param universe: the universe on which the test is performed</span>
+<span class="sd">    :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">    :param atoms: the atoms of the universe for which the gradient</span>
+<span class="sd">                  is tested (default: all atoms)</span>
+<span class="sd">    :type atoms: list</span>
+<span class="sd">    :param delta: the step size used in calculating the numerical derivatives</span>
+<span class="sd">    :type delta: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">e0</span><span class="p">,</span> <span class="n">grad</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">energyAndGradients</span><span class="p">()</span>
+    <span class="k">print</span> <span class="s">&#39;Energy: &#39;</span><span class="p">,</span> <span class="n">e0</span>
+    <span class="k">if</span> <span class="n">atoms</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">atoms</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">a</span>
+        <span class="k">print</span> <span class="n">grad</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+        <span class="n">num_grad</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ex</span><span class="p">,</span> <span class="n">ey</span><span class="p">,</span> <span class="n">ez</span><span class="p">]:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="n">delta</span><span class="o">*</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">eplus</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">energy</span><span class="p">()</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">delta</span><span class="o">*</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">eminus</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">energy</span><span class="p">()</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">num_grad</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">eplus</span><span class="o">-</span><span class="n">eminus</span><span class="p">)</span><span class="o">/</span><span class="n">delta</span><span class="p">)</span>
+        <span class="k">print</span> <span class="n">Vector</span><span class="p">(</span><span class="n">num_grad</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Check consistency of gradients and force constants.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="forceConstantTest"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.ForceFieldTest.forceConstantTest">[docs]</a><span class="k">def</span> <span class="nf">forceConstantTest</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">atoms</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">delta</span> <span class="o">=</span> <span class="mf">0.0001</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Test force constants by comparing to the numerical derivatives</span>
+<span class="sd">    of the gradients.</span>
+
+<span class="sd">    :param universe: the universe on which the test is performed</span>
+<span class="sd">    :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">    :param atoms: the atoms of the universe for which the gradient</span>
+<span class="sd">                  is tested (default: all atoms)</span>
+<span class="sd">    :type atoms: list</span>
+<span class="sd">    :param delta: the step size used in calculating the numerical derivatives</span>
+<span class="sd">    :type delta: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">e0</span><span class="p">,</span> <span class="n">grad0</span><span class="p">,</span> <span class="n">fc</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">energyGradientsAndForceConstants</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">atoms</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">atoms</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">izip</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="n">atoms</span><span class="p">),</span>
+                                  <span class="n">Utility</span><span class="o">.</span><span class="n">pairs</span><span class="p">(</span><span class="n">atoms</span><span class="p">)):</span>
+        <span class="k">print</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span>
+        <span class="k">print</span> <span class="n">fc</span><span class="p">[</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">]</span>
+        <span class="n">num_fc</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ex</span><span class="p">,</span> <span class="n">ey</span><span class="p">,</span> <span class="n">ez</span><span class="p">]:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">a1</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+            <span class="n">a1</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="n">delta</span><span class="o">*</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">e_plus</span><span class="p">,</span> <span class="n">grad_plus</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">energyAndGradients</span><span class="p">()</span>
+            <span class="n">a1</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">delta</span><span class="o">*</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">e_minus</span><span class="p">,</span> <span class="n">grad_minus</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">energyAndGradients</span><span class="p">()</span>
+            <span class="n">a1</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">num_fc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">grad_plus</span><span class="p">[</span><span class="n">a2</span><span class="p">]</span><span class="o">-</span><span class="n">grad_minus</span><span class="p">[</span><span class="n">a2</span><span class="p">])</span><span class="o">/</span><span class="n">delta</span><span class="p">)</span>
+        <span class="k">print</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">num_fc</span><span class="p">))</span>
+
+<span class="c">#</span>
+<span class="c"># Check consistency of gradients and virial</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="virialTest"><a class="viewcode-back" href="../../../modules.html#MMTK.ForceFields.ForceFieldTest.virialTest">[docs]</a><span class="k">def</span> <span class="nf">virialTest</span><span class="p">(</span><span class="n">universe</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Test the virial by comparing to an explicit computation from</span>
+<span class="sd">    positions and gradients.</span>
+
+<span class="sd">    :param universe: the universe on which the test is performed</span>
+<span class="sd">    :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ev</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">energyEvaluator</span><span class="p">()</span>
+    <span class="n">e</span><span class="p">,</span> <span class="n">grad</span> <span class="o">=</span> <span class="n">ev</span><span class="p">(</span><span class="n">gradients</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+    <span class="n">virial</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">lastVirial</span><span class="p">()</span>
+    <span class="n">conf</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+    <span class="k">print</span> <span class="n">virial</span><span class="p">,</span> <span class="o">-</span><span class="p">(</span><span class="n">conf</span><span class="o">*</span><span class="n">grad</span><span class="p">)</span><span class="o">.</span><span class="n">sumOverParticles</span><span class="p">()</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+
+    <span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="o">*</span>
+    <span class="kn">from</span> <span class="nn">MMTK.ForceFields</span> <span class="kn">import</span> <span class="n">Amber94ForceField</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="mf">0.001</span>
+    <span class="n">world</span> <span class="o">=</span> <span class="n">InfiniteUniverse</span><span class="p">(</span><span class="n">Amber94ForceField</span><span class="p">())</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Molecule</span><span class="p">(</span><span class="s">&#39;water&#39;</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">O</span><span class="o">.</span><span class="n">translateBy</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.01</span><span class="p">))</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">H1</span><span class="o">.</span><span class="n">translateBy</span><span class="p">(</span><span class="n">Vector</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">))</span>
+    <span class="n">atoms</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">gradientTest</span><span class="p">(</span><span class="n">world</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+    <span class="n">forceConstantTest</span><span class="p">(</span><span class="n">world</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+    <span class="n">virialTest</span><span class="p">(</span><span class="n">world</span><span class="p">)</span>
+    
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

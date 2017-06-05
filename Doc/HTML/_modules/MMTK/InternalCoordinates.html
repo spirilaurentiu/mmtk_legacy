@@ -1,0 +1,392 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.InternalCoordinates &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.InternalCoordinates</h1><div class="highlight"><pre>
+<span class="c"># Manipulation of internal coordinates</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Manipulation of molecular configurations in terms of internal coordinates</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">import</span> <span class="nn">MMTK</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+<span class="c">#</span>
+<span class="c"># The abstract base class</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">InternalCoordinate</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atoms</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span> <span class="o">=</span> <span class="n">atoms</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">molecule</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">topLevelChemicalObject</span><span class="p">()</span><span class="o">.</span><span class="n">bondedUnits</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">molecule</span> <span class="o">=</span> <span class="n">m</span>
+                <span class="k">break</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;inconsistent data structure&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="k">if</span> <span class="n">a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;atoms not in the same molecule&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">universe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">=</span> <span class="n">MMTK</span><span class="o">.</span><span class="n">InfiniteUniverse</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">bondTest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">bondedTo</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;no bond between </span><span class="si">%s</span><span class="s"> and </span><span class="si">%s</span><span class="s">&quot;</span>
+                                  <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="k">def</span> <span class="nf">findFragments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec1</span><span class="p">,</span> <span class="n">spec2</span><span class="p">,</span> <span class="n">excluded_first_only</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span> <span class="o">=</span> <span class="n">MMTK</span><span class="o">.</span><span class="n">Collection</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span> <span class="o">=</span> <span class="n">MMTK</span><span class="o">.</span><span class="n">Collection</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">setBondAttributes</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bondTest</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">fragment</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">excluded</span><span class="p">,</span> <span class="n">error_check</span><span class="p">)</span> \
+                    <span class="ow">in</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="p">,</span> <span class="n">spec1</span><span class="p">),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="p">,</span> <span class="n">spec2</span><span class="p">)]:</span>
+                <span class="n">atoms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">start</span><span class="p">])</span>
+                <span class="n">first</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="n">new_atoms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">start</span><span class="p">])</span>
+                <span class="k">while</span> <span class="n">new_atoms</span><span class="p">:</span>
+                    <span class="n">check</span> <span class="o">=</span> <span class="n">new_atoms</span>
+                    <span class="n">new_atoms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">check</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">na</span> <span class="ow">in</span> <span class="n">a</span><span class="o">.</span><span class="n">bondedTo</span><span class="p">():</span>
+                            <span class="k">if</span> <span class="n">excluded_first_only</span><span class="p">:</span>
+                                <span class="k">if</span> <span class="n">first</span><span class="p">:</span>
+                                    <span class="n">add</span> <span class="o">=</span> <span class="n">na</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded</span>
+                                <span class="k">else</span><span class="p">:</span>
+                                    <span class="n">add</span> <span class="o">=</span> <span class="bp">True</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">add</span> <span class="o">=</span> <span class="n">na</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded</span>
+                            <span class="k">if</span> <span class="n">add</span> <span class="ow">and</span> <span class="n">na</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+                                <span class="n">atoms</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">na</span><span class="p">)</span>
+                                <span class="n">new_atoms</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">na</span><span class="p">)</span>
+                    <span class="n">first</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="k">if</span> <span class="n">error_check</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;cyclic bond structure&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+                    <span class="n">fragment</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">clearBondAttributes</span><span class="p">()</span>
+
+<span class="c">#</span>
+<span class="c"># Bond length</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="BondLength"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.BondLength">[docs]</a><span class="k">class</span> <span class="nc">BondLength</span><span class="p">(</span><span class="n">InternalCoordinate</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bond length coordinate</span>
+
+<span class="sd">    A BondLength object permits calculating and modifying the</span>
+<span class="sd">    length of a bond in a molecule, under the condition that</span>
+<span class="sd">    the bond is not part of a circular bond structure (but it</span>
+<span class="sd">    is not a problem to have a circular bond structure elsewhere</span>
+<span class="sd">    in the molecule). Modifying the bond length moves the parts</span>
+<span class="sd">    of the molecule on both sides of the bond along the bond direction</span>
+<span class="sd">    in such a way that the center of mass of the molecule does not</span>
+<span class="sd">    change.</span>
+
+<span class="sd">    The initial construction of the BondLength object can be</span>
+<span class="sd">    expensive (the bond structure of the molecule must be</span>
+<span class="sd">    analyzed). It is therefore advisable to keep the object</span>
+<span class="sd">    rather than recreate it frequently. Note that if you only</span>
+<span class="sd">    want to calculate bond lengths (no modification), the</span>
+<span class="sd">    method Universe.distance is simpler and faster.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param atom1: the first atom that defines the bond</span>
+<span class="sd">        :type atom1: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom2: the second atom that defines the bond</span>
+<span class="sd">        :type atom2: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">InternalCoordinate</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">[</span><span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">findFragments</span><span class="p">((</span><span class="n">atom1</span><span class="p">,</span> <span class="nb">set</span><span class="p">([</span><span class="n">atom2</span><span class="p">]),</span> <span class="n">atom2</span><span class="p">),</span>
+                           <span class="p">(</span><span class="n">atom2</span><span class="p">,</span> <span class="nb">set</span><span class="p">([</span><span class="n">atom1</span><span class="p">]),</span> <span class="n">atom1</span><span class="p">),</span>
+                            <span class="bp">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BondLength.getValue"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.BondLength.getValue">[docs]</a>    <span class="k">def</span> <span class="nf">getValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration (defaults to the current configuration)</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :returns: the length of the bond in the configuration conf</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">conf</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BondLength.setValue"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.BondLength.setValue">[docs]</a>    <span class="k">def</span> <span class="nf">setValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the length of the bond</span>
+<span class="sd">        :param value: the desired length of the bond</span>
+<span class="sd">        :type value: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="n">value</span> <span class="o">-</span> <span class="n">v</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="o">.</span><span class="n">mass</span><span class="p">()</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="o">.</span><span class="n">mass</span><span class="p">()</span>
+        <span class="n">d1</span> <span class="o">=</span> <span class="o">-</span><span class="n">m2</span><span class="o">*</span><span class="n">distance</span><span class="o">/</span><span class="p">(</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span>
+        <span class="n">d2</span> <span class="o">=</span> <span class="n">m1</span><span class="o">*</span><span class="n">distance</span><span class="o">/</span><span class="p">(</span><span class="n">m1</span><span class="o">+</span><span class="n">m2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="o">.</span><span class="n">translateBy</span><span class="p">(</span><span class="n">d1</span><span class="o">*</span><span class="n">axis</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="o">.</span><span class="n">translateBy</span><span class="p">(</span><span class="n">d2</span><span class="o">*</span><span class="n">axis</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Bond angles</span>
+<span class="c">#</span></div></div>
+<div class="viewcode-block" id="BondAngle"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.BondAngle">[docs]</a><span class="k">class</span> <span class="nc">BondAngle</span><span class="p">(</span><span class="n">InternalCoordinate</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bond angle</span>
+
+<span class="sd">    A BondAngle object permits calculating and modifying the</span>
+<span class="sd">    angle between two bonds in a molecule, under the condition that</span>
+<span class="sd">    the bonds are not part of a circular bond structure (but it</span>
+<span class="sd">    is not a problem to have a circular bond structure elsewhere</span>
+<span class="sd">    in the molecule). Modifying the bond angle rotates the parts</span>
+<span class="sd">    of the molecule on both sides of the central atom around</span>
+<span class="sd">    an axis passing through the central atom and perpendicular</span>
+<span class="sd">    to the plane defined by the two bonds in such a way that</span>
+<span class="sd">    there is no overall rotation of the molecule. The central</span>
+<span class="sd">    atom and any other atoms bonded to it do not move.</span>
+
+<span class="sd">    The initial construction of the BondAngle object can be</span>
+<span class="sd">    expensive (the bond structure of the molecule must be</span>
+<span class="sd">    analyzed). It is therefore advisable to keep the object</span>
+<span class="sd">    rather than recreate it frequently. Note that if you only</span>
+<span class="sd">    want to calculate bond angles (no modification), the</span>
+<span class="sd">    method Universe.angle is simpler and faster.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param atom1: the first atom that defines the angle</span>
+<span class="sd">        :type atom1: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom2: the second and central atom that defines the bond</span>
+<span class="sd">        :type atom2: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom3: the third atom that defines the bond</span>
+<span class="sd">        :type atom3: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">InternalCoordinate</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">[</span><span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">])</span>
+        <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">atom2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">findFragments</span><span class="p">((</span><span class="n">atom1</span><span class="p">,</span> <span class="n">excluded</span><span class="p">,</span> <span class="n">atom3</span><span class="p">),</span> <span class="p">(</span><span class="n">atom3</span><span class="p">,</span> <span class="n">excluded</span><span class="p">,</span> <span class="n">atom1</span><span class="p">))</span>
+
+<div class="viewcode-block" id="BondAngle.getValue"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.BondAngle.getValue">[docs]</a>    <span class="k">def</span> <span class="nf">getValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration (defaults to the current configuration)</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :returns: the size of the angle in the configuration conf</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">conf</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BondAngle.setValue"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.BondAngle.setValue">[docs]</a>    <span class="k">def</span> <span class="nf">setValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the size of the angle</span>
+<span class="sd">        :param value: the desired angle</span>
+<span class="sd">        :type value: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">delta</span>
+        <span class="n">v1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">angle</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">N</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">angle</span> <span class="o">-</span> <span class="n">N</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.e-4</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;angle too close to pi&quot;</span><span class="p">)</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">angle</span><span class="o">-</span><span class="n">value</span>
+        <span class="n">cm1</span><span class="p">,</span> <span class="n">th1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="o">.</span><span class="n">centerAndMomentOfInertia</span><span class="p">()</span>
+        <span class="n">r1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">cm1</span><span class="p">)</span>
+        <span class="n">th1</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="o">.</span><span class="n">mass</span><span class="p">()</span><span class="o">*</span><span class="p">((</span><span class="n">r1</span><span class="o">*</span><span class="n">r1</span><span class="p">)</span><span class="o">*</span><span class="n">delta</span><span class="o">-</span><span class="n">r1</span><span class="o">.</span><span class="n">dyadicProduct</span><span class="p">(</span><span class="n">r1</span><span class="p">))</span>
+        <span class="n">i1</span> <span class="o">=</span> <span class="n">axis</span><span class="o">*</span><span class="p">(</span><span class="n">th1</span><span class="o">*</span><span class="n">axis</span><span class="p">)</span>
+        <span class="n">cm2</span><span class="p">,</span> <span class="n">th2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="o">.</span><span class="n">centerAndMomentOfInertia</span><span class="p">()</span>
+        <span class="n">r2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">cm2</span><span class="p">)</span>
+        <span class="n">th2</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="o">.</span><span class="n">mass</span><span class="p">()</span><span class="o">*</span><span class="p">((</span><span class="n">r2</span><span class="o">*</span><span class="n">r2</span><span class="p">)</span><span class="o">*</span><span class="n">delta</span><span class="o">-</span><span class="n">r2</span><span class="o">.</span><span class="n">dyadicProduct</span><span class="p">(</span><span class="n">r2</span><span class="p">))</span>
+        <span class="n">i2</span> <span class="o">=</span> <span class="n">axis</span><span class="o">*</span><span class="p">(</span><span class="n">th2</span><span class="o">*</span><span class="n">axis</span><span class="p">)</span>
+        <span class="n">d1</span> <span class="o">=</span> <span class="n">i2</span><span class="o">*</span><span class="n">d</span><span class="o">/</span><span class="p">(</span><span class="n">i1</span><span class="o">+</span><span class="n">i2</span><span class="p">)</span>
+        <span class="n">d2</span> <span class="o">=</span> <span class="n">d1</span><span class="o">-</span><span class="n">d</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="o">.</span><span class="n">rotateAroundAxis</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">(),</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">+</span><span class="n">axis</span><span class="p">,</span>
+                                        <span class="n">d1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="o">.</span><span class="n">rotateAroundAxis</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">(),</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">+</span><span class="n">axis</span><span class="p">,</span>
+                                        <span class="n">d2</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Dihedral angles</span>
+<span class="c">#</span></div></div>
+<div class="viewcode-block" id="DihedralAngle"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.DihedralAngle">[docs]</a><span class="k">class</span> <span class="nc">DihedralAngle</span><span class="p">(</span><span class="n">InternalCoordinate</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dihedral angle</span>
+
+<span class="sd">    A DihedralAngle object permits calculating and modifying the</span>
+<span class="sd">    dihedral angle defined by three consecutive bonds in a molecule,</span>
+<span class="sd">    under the condition that the central bond is not part of a</span>
+<span class="sd">    circular bond structure (but it is not a problem to have a</span>
+<span class="sd">    circular bond structure elsewhere in the molecule). Modifying the</span>
+<span class="sd">    dihedral angle rotates the parts of the molecule on both sides of</span>
+<span class="sd">    the central bond around this central bond in such a way that there</span>
+<span class="sd">    is no overall rotation of the molecule.</span>
+
+<span class="sd">    The initial construction of the DihedralAngle object can be</span>
+<span class="sd">    expensive (the bond structure of the molecule must be</span>
+<span class="sd">    analyzed). It is therefore advisable to keep the object</span>
+<span class="sd">    rather than recreate it frequently. Note that if you only</span>
+<span class="sd">    want to calculate bond angles (no modification), the</span>
+<span class="sd">    method Universe.dihedral is simpler and faster.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">,</span> <span class="n">atom4</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param atom1: the first atom that defines the dihedral</span>
+<span class="sd">        :type atom1: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom2: the second atom that defines the dihedral,</span>
+<span class="sd">                      must be on the central bond</span>
+<span class="sd">        :type atom2: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom3: the third atom that defines the dihedral,</span>
+<span class="sd">                      must be on the central bond</span>
+<span class="sd">        :type atom3: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :param atom4: the fourth atom that defines the dihedral</span>
+<span class="sd">        :type atom4: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">InternalCoordinate</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">[</span><span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">,</span> <span class="n">atom4</span><span class="p">])</span>
+        <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">atom2</span><span class="p">,</span> <span class="n">atom3</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">findFragments</span><span class="p">((</span><span class="n">atom1</span><span class="p">,</span> <span class="n">excluded</span><span class="p">,</span> <span class="n">atom4</span><span class="p">),</span> <span class="p">(</span><span class="n">atom4</span><span class="p">,</span> <span class="n">excluded</span><span class="p">,</span> <span class="n">atom1</span><span class="p">))</span>
+
+<div class="viewcode-block" id="DihedralAngle.getValue"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.DihedralAngle.getValue">[docs]</a>    <span class="k">def</span> <span class="nf">getValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param conf: a configuration (defaults to the current configuration)</span>
+<span class="sd">        :type conf: :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">        :returns: the size of the dihedral angle in the configuration conf</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">dihedral</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">conf</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DihedralAngle.setValue"><a class="viewcode-back" href="../../modules.html#MMTK.InternalCoordinates.DihedralAngle.setValue">[docs]</a>    <span class="k">def</span> <span class="nf">setValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the size of the dihedral</span>
+<span class="sd">        :param value: the desired dihedral angle</span>
+<span class="sd">        :type value: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">delta</span>
+        <span class="n">angle</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">dihedral</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">fmod</span><span class="p">(</span><span class="n">angle</span><span class="o">-</span><span class="n">value</span><span class="p">,</span> <span class="mf">2.</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        <span class="n">cm1</span><span class="p">,</span> <span class="n">th1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="o">.</span><span class="n">centerAndMomentOfInertia</span><span class="p">()</span>
+        <span class="n">r1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">cm1</span><span class="p">)</span>
+        <span class="n">th1</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="o">.</span><span class="n">mass</span><span class="p">()</span><span class="o">*</span><span class="p">((</span><span class="n">r1</span><span class="o">*</span><span class="n">r1</span><span class="p">)</span><span class="o">*</span><span class="n">delta</span><span class="o">-</span><span class="n">r1</span><span class="o">.</span><span class="n">dyadicProduct</span><span class="p">(</span><span class="n">r1</span><span class="p">))</span>
+        <span class="n">i1</span> <span class="o">=</span> <span class="n">axis</span><span class="o">*</span><span class="p">(</span><span class="n">th1</span><span class="o">*</span><span class="n">axis</span><span class="p">)</span>
+        <span class="n">cm2</span><span class="p">,</span> <span class="n">th2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="o">.</span><span class="n">centerAndMomentOfInertia</span><span class="p">()</span>
+        <span class="n">r2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">cm2</span><span class="p">)</span>
+        <span class="n">th2</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="o">.</span><span class="n">mass</span><span class="p">()</span><span class="o">*</span><span class="p">((</span><span class="n">r2</span><span class="o">*</span><span class="n">r2</span><span class="p">)</span><span class="o">*</span><span class="n">delta</span><span class="o">-</span><span class="n">r2</span><span class="o">.</span><span class="n">dyadicProduct</span><span class="p">(</span><span class="n">r2</span><span class="p">))</span>
+        <span class="n">i2</span> <span class="o">=</span> <span class="n">axis</span><span class="o">*</span><span class="p">(</span><span class="n">th2</span><span class="o">*</span><span class="n">axis</span><span class="p">)</span>
+        <span class="n">d1</span> <span class="o">=</span> <span class="n">i2</span><span class="o">*</span><span class="n">d</span><span class="o">/</span><span class="p">(</span><span class="n">i1</span><span class="o">+</span><span class="n">i2</span><span class="p">)</span>
+        <span class="n">d2</span> <span class="o">=</span> <span class="n">d1</span><span class="o">-</span><span class="n">d</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fragment1</span><span class="o">.</span><span class="n">rotateAroundAxis</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">(),</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">+</span><span class="n">axis</span><span class="p">,</span>
+                                        <span class="n">d1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fragment2</span><span class="o">.</span><span class="n">rotateAroundAxis</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">(),</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">+</span><span class="n">axis</span><span class="p">,</span>
+                                        <span class="n">d2</span><span class="p">)</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

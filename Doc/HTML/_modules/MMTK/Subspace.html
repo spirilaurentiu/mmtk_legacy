@@ -1,0 +1,467 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Subspace &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Subspace</h1><div class="highlight"><pre>
+<span class="c"># This module implements subspaces for motion analysis etc.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Linear subspaces for infinitesimal motions</span>
+
+<span class="sd">This module implements subspaces for infinitesimal (or finite</span>
+<span class="sd">small-amplitude) atomic motions. They can be used in normal mode</span>
+<span class="sd">calculations or for analyzing complex motions. For an explanation, see:</span>
+
+<span class="sd">  |  K. Hinsen and G.R. Kneller</span>
+<span class="sd">  |  Projection methods for the analysis of complex motions in macromolecules</span>
+<span class="sd">  |  Mol. Sim. 23:275-292 (2000)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Utility</span><span class="p">,</span> <span class="n">ParticleProperties</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span><span class="p">,</span> <span class="n">ex</span><span class="p">,</span> <span class="n">ey</span><span class="p">,</span> <span class="n">ez</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="c">#</span>
+<span class="c"># Import LAPACK routines</span>
+<span class="c">#</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">array_package</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">package</span>
+<span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+    <span class="n">array_package</span> <span class="o">=</span> <span class="s">&quot;Numeric&quot;</span>
+
+<span class="n">dgesdd</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">array_package</span> <span class="o">==</span> <span class="s">&quot;Numeric&quot;</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">lapack_lite</span> <span class="kn">import</span> <span class="n">dgesdd</span><span class="p">,</span> <span class="n">LapackError</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">numpy.linalg.lapack_lite</span> <span class="kn">import</span> <span class="n">dgesdd</span><span class="p">,</span> <span class="n">LapackError</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span> <span class="k">pass</span>
+<span class="k">if</span> <span class="n">dgesdd</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c"># PyLAPACK</span>
+        <span class="kn">from</span> <span class="nn">lapack_dge</span> <span class="kn">import</span> <span class="n">dgesdd</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span> <span class="k">pass</span>
+<span class="k">if</span> <span class="n">dgesdd</span><span class="p">:</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="n">sv</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="n">vt</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="n">work</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="n">int_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">Int8</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">Int16</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">Int32</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">int_types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">Int64</span><span class="p">)</span>
+        <span class="n">int_types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">Int128</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">for</span> <span class="n">int_type</span> <span class="ow">in</span> <span class="n">int_types</span><span class="p">:</span>
+        <span class="n">iwork</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">int_type</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">dgesdd</span><span class="p">(</span><span class="s">&#39;S&#39;</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">sv</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">work</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">iwork</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">break</span>
+        <span class="k">except</span> <span class="n">LapackError</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="k">del</span> <span class="n">n</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">sv</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">work</span><span class="p">,</span> <span class="n">iwork</span><span class="p">,</span> <span class="n">int_types</span>
+
+<span class="k">del</span> <span class="n">array_package</span>
+
+<span class="c">#</span>
+<span class="c"># A set of particle vectors that define a subspace</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">ParticleVectorSet</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">=</span> <span class="n">universe</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="n">N</span><span class="o">.</span><span class="n">arraytype</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">data</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">universe</span><span class="o">.</span><span class="n">numberOfAtoms</span><span class="p">(),</span> <span class="mi">3</span><span class="p">),</span>
+                                 <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span>
+        <span class="k">return</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="Subspace"><a class="viewcode-back" href="../../modules.html#MMTK.Subspace.Subspace">[docs]</a><span class="k">class</span> <span class="nc">Subspace</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subspace of infinitesimal atomic motions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">vectors</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the subspace is created</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param vectors: a list of :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">                        objects that define the subspace. They need not be</span>
+<span class="sd">                        orthogonal or linearly independent.</span>
+<span class="sd">        :type vectors: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">=</span> <span class="n">universe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vectors</span> <span class="o">=</span> <span class="n">vectors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_basis</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Subspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vectors</span><span class="o">+</span><span class="n">other</span><span class="o">.</span><span class="n">vectors</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vectors</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vectors</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Subspace.getBasis"><a class="viewcode-back" href="../../modules.html#MMTK.Subspace.Subspace.getBasis">[docs]</a>    <span class="k">def</span> <span class="nf">getBasis</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a basis for the subspace by orthonormalization of</span>
+<span class="sd">        the input vectors using Singular Value Decomposition. The</span>
+<span class="sd">        basis consists of a sequence of</span>
+<span class="sd">        :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        objects that are orthonormal in configuration space.</span>
+<span class="sd">        :returns: the basis</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_basis</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">basis</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">v</span><span class="o">.</span><span class="n">array</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vectors</span><span class="p">],</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">basis</span><span class="o">.</span><span class="n">shape</span>
+            <span class="n">nvectors</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">natoms</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">basis</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">nvectors</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">)</span>
+            <span class="n">sv</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">min</span><span class="p">(</span><span class="n">nvectors</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">),),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+            <span class="n">min_n_m</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">nvectors</span><span class="p">)</span>
+            <span class="n">vt</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nvectors</span><span class="p">,</span> <span class="n">min_n_m</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+            <span class="n">work</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+            <span class="n">iwork</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">8</span><span class="o">*</span><span class="n">min_n_m</span><span class="p">,),</span> <span class="n">int_type</span><span class="p">)</span>
+            <span class="k">if</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span> <span class="o">&gt;=</span> <span class="n">nvectors</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">dgesdd</span><span class="p">(</span><span class="s">&#39;O&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">nvectors</span><span class="p">,</span> <span class="n">basis</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span>
+                                <span class="n">sv</span><span class="p">,</span> <span class="n">basis</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">min_n_m</span><span class="p">,</span>
+                                <span class="n">work</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">iwork</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">work</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">work</span><span class="p">[</span><span class="mi">0</span><span class="p">]),),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">dgesdd</span><span class="p">(</span><span class="s">&#39;O&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">nvectors</span><span class="p">,</span> <span class="n">basis</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span>
+                                <span class="n">sv</span><span class="p">,</span> <span class="n">basis</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">min_n_m</span><span class="p">,</span>
+                                <span class="n">work</span><span class="p">,</span> <span class="n">work</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">iwork</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">u</span> <span class="o">=</span> <span class="n">basis</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">u</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">min_n_m</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">dgesdd</span><span class="p">(</span><span class="s">&#39;S&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">nvectors</span><span class="p">,</span> <span class="n">basis</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span>
+                                <span class="n">sv</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">min_n_m</span><span class="p">,</span>
+                                <span class="n">work</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">iwork</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">work</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">work</span><span class="p">[</span><span class="mi">0</span><span class="p">]),),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">dgesdd</span><span class="p">(</span><span class="s">&#39;S&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">nvectors</span><span class="p">,</span> <span class="n">basis</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span>
+                                <span class="n">sv</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">natoms</span><span class="p">,</span> <span class="n">vt</span><span class="p">,</span> <span class="n">min_n_m</span><span class="p">,</span>
+                                <span class="n">work</span><span class="p">,</span> <span class="n">work</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">iwork</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s">&#39;info&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Lapack SVD: &#39;</span> <span class="o">+</span> <span class="sb">`result[&#39;info&#39;]`</span><span class="p">)</span>
+            <span class="n">svmax</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">sv</span><span class="p">)</span>
+            <span class="n">nvectors</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">greater</span><span class="p">(</span><span class="n">sv</span><span class="p">,</span> <span class="mf">1.e-10</span><span class="o">*</span><span class="n">svmax</span><span class="p">))</span>
+            <span class="n">u</span> <span class="o">=</span> <span class="n">u</span><span class="p">[:</span><span class="n">nvectors</span><span class="p">]</span>
+            <span class="n">u</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">nvectors</span><span class="p">,</span> <span class="n">natoms</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_basis</span> <span class="o">=</span> <span class="n">ParticleVectorSet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_basis</span>
+</div>
+<div class="viewcode-block" id="Subspace.projectionOf"><a class="viewcode-back" href="../../modules.html#MMTK.Subspace.Subspace.projectionOf">[docs]</a>    <span class="k">def</span> <span class="nf">projectionOf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param vector: a particle vector</span>
+<span class="sd">        :type vector: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :returns: the projection of the vector onto the subspace.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">vector</span> <span class="o">=</span> <span class="n">vector</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getBasis</span><span class="p">()</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">vector</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">bv</span> <span class="ow">in</span> <span class="n">basis</span><span class="p">:</span>
+            <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">bv</span><span class="o">*</span><span class="n">vector</span><span class="p">))</span><span class="o">*</span><span class="n">bv</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Subspace.projectionComplementOf"><a class="viewcode-back" href="../../modules.html#MMTK.Subspace.Subspace.projectionComplementOf">[docs]</a>    <span class="k">def</span> <span class="nf">projectionComplementOf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param vector: a particle vector</span>
+<span class="sd">        :type vector: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :returns: the projection of the vector onto the orthogonal complement</span>
+<span class="sd">                  of the subspace.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">vector</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">projectionOf</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Subspace.complement"><a class="viewcode-back" href="../../modules.html#MMTK.Subspace.Subspace.complement">[docs]</a>    <span class="k">def</span> <span class="nf">complement</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the orthogonal complement subspace</span>
+<span class="sd">        :rtype: :class:`~MMTK.Subspace.Subspace`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">numberOfAtoms</span><span class="p">()):</span>
+            <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ex</span><span class="p">,</span> <span class="n">ey</span><span class="p">,</span> <span class="n">ez</span><span class="p">]:</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+                <span class="n">p</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">e</span>
+                <span class="n">basis</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projectionComplementOf</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">Subspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">basis</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="LinkedRigidBodyMotionSubspace"><a class="viewcode-back" href="../../modules.html#MMTK.Subspace.LinkedRigidBodyMotionSubspace">[docs]</a><span class="k">class</span> <span class="nc">LinkedRigidBodyMotionSubspace</span><span class="p">(</span><span class="n">Subspace</span><span class="p">):</span>
+    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subspace for the motion of linked rigid bodies</span>
+
+<span class="sd">    This class describes the same subspace as RigidBodyMotionSubspace,</span>
+<span class="sd">    and is used by the latter. For collections of several chains of</span>
+<span class="sd">    linked rigid bodies, RigidBodyMotionSubspace is more efficient.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">rigid_bodies</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the subspace is created</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param rigid_bodies: a list or set of rigid bodies</span>
+<span class="sd">                             with some common atoms</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ex_ey_ez</span> <span class="o">=</span> <span class="p">[</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">)]</span>
+        <span class="c"># Constructs</span>
+        <span class="c"># 1) a list of vectors describing the rigid-body motions of each</span>
+        <span class="c">#    rigid body as if it were independent.</span>
+        <span class="c"># 2) a list of pair-distance constraint vectors for all pairs of</span>
+        <span class="c">#    atoms inside a rigid body.</span>
+        <span class="c"># The LRB subspace is constructed from the projections of the</span>
+        <span class="c"># first set of vectors onto the orthogonal complement of the</span>
+        <span class="c"># subspace generated by the second set of vectors.</span>
+        <span class="n">vectors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">c_vectors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">rb</span> <span class="ow">in</span> <span class="n">rigid_bodies</span><span class="p">:</span>
+            <span class="n">atoms</span> <span class="o">=</span> <span class="n">rb</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">ex_ey_ez</span><span class="p">:</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+                    <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span>
+                <span class="n">vectors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">center</span> <span class="o">=</span> <span class="n">rb</span><span class="o">.</span><span class="n">centerOfMass</span><span class="p">()</span>
+                <span class="n">iv</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vectors</span><span class="p">)</span><span class="o">-</span><span class="mi">3</span>
+                <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">ex_ey_ez</span><span class="p">:</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
+                        <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">-</span><span class="n">center</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">vt</span> <span class="ow">in</span> <span class="n">vectors</span><span class="p">[</span><span class="n">iv</span><span class="p">:]:</span>
+                        <span class="n">v</span> <span class="o">-=</span> <span class="n">v</span><span class="o">.</span><span class="n">dotProduct</span><span class="p">(</span><span class="n">vt</span><span class="p">)</span><span class="o">*</span><span class="n">vt</span>
+                    <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">dotProduct</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+                        <span class="n">vectors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span> <span class="ow">in</span> <span class="n">Utility</span><span class="o">.</span><span class="n">pairs</span><span class="p">(</span><span class="n">atoms</span><span class="p">):</span>
+                <span class="n">distance</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">distanceVector</span><span class="p">(</span><span class="n">a1</span><span class="o">.</span><span class="n">position</span><span class="p">(),</span>
+                                                   <span class="n">a2</span><span class="o">.</span><span class="n">position</span><span class="p">())</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+                <span class="n">v</span><span class="p">[</span><span class="n">a1</span><span class="p">]</span> <span class="o">=</span> <span class="n">distance</span>
+                <span class="n">v</span><span class="p">[</span><span class="n">a2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">distance</span>
+                <span class="n">c_vectors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">c_vectors</span><span class="p">:</span>
+            <span class="n">constraints</span> <span class="o">=</span> <span class="n">Subspace</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">c_vectors</span><span class="p">)</span>
+            <span class="n">vectors</span> <span class="o">=</span> <span class="p">[</span><span class="n">constraints</span><span class="o">.</span><span class="n">projectionComplementOf</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vectors</span><span class="p">]</span>
+        <span class="n">Subspace</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">vectors</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="RigidMotionSubspace"><a class="viewcode-back" href="../../modules.html#MMTK.Subspace.RigidMotionSubspace">[docs]</a><span class="k">class</span> <span class="nc">RigidMotionSubspace</span><span class="p">(</span><span class="n">Subspace</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subspace of rigid-body motions</span>
+
+<span class="sd">    A rigid-body motion subspace is the subspace which contains</span>
+<span class="sd">    the rigid-body motions of any number of chemical objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">objects</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the subspace is created</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param objects: a sequence of objects whose rigid-body motion is</span>
+<span class="sd">                        included in the subspace</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">Utility</span><span class="o">.</span><span class="n">isSequenceObject</span><span class="p">(</span><span class="n">objects</span><span class="p">):</span>
+            <span class="n">objects</span> <span class="o">=</span> <span class="p">[</span><span class="n">objects</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">objects</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">objects</span><span class="p">)</span>
+        <span class="c"># Identify connected sets of linked rigid bodies and remove</span>
+        <span class="c"># them from the plain rigid body list.</span>
+        <span class="n">atom_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">o</span><span class="o">.</span><span class="n">atomIterator</span><span class="p">():</span>
+                <span class="n">am</span> <span class="o">=</span> <span class="n">atom_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="n">am</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+                <span class="n">atom_map</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="n">am</span>
+        <span class="n">rb_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">rbs</span> <span class="ow">in</span> <span class="n">atom_map</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rbs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">rb</span> <span class="ow">in</span> <span class="n">rbs</span><span class="p">:</span>
+                    <span class="n">rb_map</span><span class="p">[</span><span class="n">rb</span><span class="p">]</span> <span class="o">=</span> <span class="n">rb_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rb</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())</span> \
+                                 <span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="nb">frozenset</span><span class="p">(</span><span class="n">rbs</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">rb</span> <span class="ow">in</span> <span class="n">rb_map</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">objects</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">rb</span><span class="p">)</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">for</span> <span class="n">rbs</span> <span class="ow">in</span> <span class="n">rb_map</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">rb</span> <span class="ow">in</span> <span class="n">rbs</span><span class="p">:</span>
+                    <span class="n">s</span> <span class="o">=</span> <span class="n">rb_map</span><span class="p">[</span><span class="n">rb</span><span class="p">]</span>
+                    <span class="n">rb_map</span><span class="p">[</span><span class="n">rb</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">rbs</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">s</span> <span class="o">!=</span> <span class="n">rb_map</span><span class="p">[</span><span class="n">rb</span><span class="p">]:</span>
+                        <span class="n">changed</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="n">lrbs</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">rb_map</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+        <span class="c"># Generate the subspace vectors for the isolated rigid bodies.</span>
+        <span class="n">ex_ey_ez</span> <span class="o">=</span> <span class="p">[</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">)]</span>
+        <span class="n">vectors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">:</span>
+            <span class="n">rb_atoms</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">ex_ey_ez</span><span class="p">:</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">rb_atoms</span><span class="p">:</span>
+                    <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span>
+                <span class="n">vectors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="o">/</span><span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rb_atoms</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rb_atoms</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">center</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">centerOfMass</span><span class="p">()</span>
+                <span class="n">iv</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vectors</span><span class="p">)</span><span class="o">-</span><span class="mi">3</span>
+                <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">ex_ey_ez</span><span class="p">:</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">rb_atoms</span><span class="p">:</span>
+                        <span class="n">v</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">-</span><span class="n">center</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">vt</span> <span class="ow">in</span> <span class="n">vectors</span><span class="p">[</span><span class="n">iv</span><span class="p">:]:</span>
+                        <span class="n">v</span> <span class="o">-=</span> <span class="n">v</span><span class="o">.</span><span class="n">dotProduct</span><span class="p">(</span><span class="n">vt</span><span class="p">)</span><span class="o">*</span><span class="n">vt</span>
+                    <span class="n">norm_sq</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">dotProduct</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">norm_sq</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+                        <span class="n">vectors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="o">/</span><span class="n">norm_sq</span><span class="p">)</span>
+
+        <span class="c"># Generate the subspace vectors for the linked rigid bodies.</span>
+        <span class="k">for</span> <span class="n">lrb</span> <span class="ow">in</span> <span class="n">lrbs</span><span class="p">:</span>
+            <span class="n">lrb_ss</span> <span class="o">=</span> <span class="n">LinkedRigidBodyMotionSubspace</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">lrb</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">lrb_ss</span><span class="o">.</span><span class="n">getBasis</span><span class="p">():</span>
+                <span class="n">vectors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+        <span class="n">Subspace</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">vectors</span><span class="p">)</span>
+        <span class="c"># The vector set is already orthonormal by construction,</span>
+        <span class="c"># so we can skip the lengthy SVD procedure.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_basis</span> <span class="o">=</span> <span class="n">ParticleVectorSet</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">vectors</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vectors</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_basis</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">vectors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">array</span>
+
+</div>
+<div class="viewcode-block" id="PairDistanceSubspace"><a class="viewcode-back" href="../../modules.html#MMTK.Subspace.PairDistanceSubspace">[docs]</a><span class="k">class</span> <span class="nc">PairDistanceSubspace</span><span class="p">(</span><span class="n">Subspace</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subspace of pair-distance motions</span>
+
+<span class="sd">    A pair-distance motion subspace is the subspace which contains</span>
+<span class="sd">    the relative motions of any number of atom pairs along</span>
+<span class="sd">    their distance vector, e.g. bond elongation between two</span>
+<span class="sd">    bonded atoms.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">atom_pairs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the subspace is created</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param atom_pairs: a sequence of atom pairs whose distance-vector</span>
+<span class="sd">                           motion is included in the subspace</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">vectors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span> <span class="ow">in</span> <span class="n">atom_pairs</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="n">atom1</span><span class="o">.</span><span class="n">position</span><span class="p">()</span><span class="o">-</span><span class="n">atom2</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+            <span class="n">v</span><span class="p">[</span><span class="n">atom1</span><span class="p">]</span> <span class="o">=</span> <span class="n">distance</span>
+            <span class="n">v</span><span class="p">[</span><span class="n">atom2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">distance</span>
+            <span class="n">vectors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="n">Subspace</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">vectors</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

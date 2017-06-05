@@ -1,0 +1,454 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Dynamics &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Dynamics</h1><div class="highlight"><pre>
+<span class="c"># This module implements MD integrators</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Molecular Dynamics integrators</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Features</span><span class="p">,</span> <span class="n">Trajectory</span><span class="p">,</span> <span class="n">Units</span>
+<span class="kn">import</span> <span class="nn">MMTK_dynamics</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+<span class="c">#</span>
+<span class="c"># Integrator base class</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">Integrator</span><span class="p">(</span><span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryGenerator</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+        <span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryGenerator</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+    <span class="n">default_options</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;first_step&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;steps&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s">&#39;delta_t&#39;</span><span class="p">:</span> <span class="mf">1.</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">fs</span><span class="p">,</span>
+                       <span class="s">&#39;background&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;threads&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                       <span class="s">&#39;mpi_communicator&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&#39;actions&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+
+    <span class="n">available_data</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;configuration&#39;</span><span class="p">,</span> <span class="s">&#39;velocities&#39;</span><span class="p">,</span> <span class="s">&#39;gradients&#39;</span><span class="p">,</span>
+                      <span class="s">&#39;energy&#39;</span><span class="p">,</span> <span class="s">&#39;thermodynamic&#39;</span><span class="p">,</span> <span class="s">&#39;time&#39;</span><span class="p">,</span> <span class="s">&#39;auxiliary&#39;</span><span class="p">]</span>
+
+    <span class="n">restart_data</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;configuration&#39;</span><span class="p">,</span> <span class="s">&#39;velocities&#39;</span><span class="p">,</span> <span class="s">&#39;energy&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;thermodynamic&#39;</span><span class="p">,</span> <span class="s">&#39;auxiliary&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span>
+
+<span class="c">#</span>
+<span class="c"># Velocity-Verlet integrator</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="VelocityVerletIntegrator"><a class="viewcode-back" href="../../modules.html#MMTK.Dynamics.VelocityVerletIntegrator">[docs]</a><span class="k">class</span> <span class="nc">VelocityVerletIntegrator</span><span class="p">(</span><span class="n">Integrator</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Velocity-Verlet molecular dynamics integrator</span>
+
+<span class="sd">    The integrator can handle fixed atoms, distance constraints,</span>
+<span class="sd">    a thermostat, and a barostat, as well as any combination.</span>
+<span class="sd">    It is fully thread-safe.</span>
+
+<span class="sd">    The integration is started by calling the integrator object.</span>
+<span class="sd">    All the keyword options (see documnentation of __init__) can be</span>
+<span class="sd">    specified either when creating the integrator or when calling it.</span>
+
+<span class="sd">    The following data categories and variables are available for</span>
+<span class="sd">    output:</span>
+
+<span class="sd">     - category &quot;time&quot;: time</span>
+
+<span class="sd">     - category &quot;configuration&quot;: configuration and box size (for</span>
+<span class="sd">       periodic universes)</span>
+
+<span class="sd">     - category &quot;velocities&quot;: atomic velocities</span>
+
+<span class="sd">     - category &quot;gradients&quot;: energy gradients for each atom</span>
+
+<span class="sd">     - category &quot;energy&quot;: potential and kinetic energy, plus</span>
+<span class="sd">       extended-system energy terms if a thermostat and/or barostat</span>
+<span class="sd">       are used</span>
+
+<span class="sd">     - category &quot;thermodynamic&quot;: temperature, volume (if a barostat</span>
+<span class="sd">       is used) and pressure</span>
+
+<span class="sd">     - category &quot;auxiliary&quot;: extended-system coordinates if a thermostat</span>
+<span class="sd">       and/or barostat are used</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe on which the integrator acts</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :keyword steps: the number of integration steps (default is 100)</span>
+<span class="sd">        :type steps: int</span>
+<span class="sd">        :keyword delta_t: the time step (default is 1 fs)</span>
+<span class="sd">        :type delta_t: float</span>
+<span class="sd">        :keyword actions: a list of actions to be executed periodically</span>
+<span class="sd">                          (default is none)</span>
+<span class="sd">        :type actions: list</span>
+<span class="sd">        :keyword threads: the number of threads to use in energy evaluation</span>
+<span class="sd">                          (default set by MMTK_ENERGY_THREADS)</span>
+<span class="sd">        :type threads: int</span>
+<span class="sd">        :keyword background: if True, the integration is executed as a</span>
+<span class="sd">                             separate thread (default: False)</span>
+<span class="sd">        :type background: bool</span>
+<span class="sd">        :keyword mpi_communicator: an MPI communicator object, or None,</span>
+<span class="sd">                                   meaning no parallelization (default: None)</span>
+<span class="sd">        :type mpi_communicator: Scientific.MPI.MPICommunicator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Integrator</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="n">Features</span><span class="o">.</span><span class="n">FixedParticleFeature</span><span class="p">,</span>
+                         <span class="n">Features</span><span class="o">.</span><span class="n">NoseThermostatFeature</span><span class="p">,</span>
+                         <span class="n">Features</span><span class="o">.</span><span class="n">AndersenBarostatFeature</span><span class="p">,</span>
+                         <span class="n">Features</span><span class="o">.</span><span class="n">DistanceConstraintsFeature</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the integrator. The keyword options are the same as described</span>
+<span class="sd">        under __init__.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setCallOptions</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+        <span class="n">used_features</span> <span class="o">=</span> <span class="n">Features</span><span class="o">.</span><span class="n">checkFeatures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+        <span class="n">configuration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="n">velocities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">velocities</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">velocities</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;no velocities&quot;</span><span class="p">)</span>
+        <span class="n">masses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">masses</span><span class="p">()</span>
+        <span class="n">fixed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">getAtomBooleanArray</span><span class="p">(</span><span class="s">&#39;fixed&#39;</span><span class="p">)</span>
+        <span class="n">nt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;threads&#39;</span><span class="p">)</span>
+        <span class="n">comm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;mpi_communicator&#39;</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">energyEvaluator</span><span class="p">(</span><span class="n">threads</span><span class="o">=</span><span class="n">nt</span><span class="p">,</span>
+                                                  <span class="n">mpi_communicator</span><span class="o">=</span><span class="n">comm</span><span class="p">)</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">CEvaluator</span><span class="p">()</span>
+        <span class="n">constraints</span><span class="p">,</span> <span class="n">const_distances_sq</span><span class="p">,</span> <span class="n">c_blocks</span> <span class="o">=</span> \
+                     <span class="n">_constraintArrays</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">)</span>
+                                                  
+        <span class="nb">type</span> <span class="o">=</span> <span class="s">&#39;NVE&#39;</span>
+        <span class="k">if</span> <span class="n">Features</span><span class="o">.</span><span class="n">NoseThermostatFeature</span> <span class="ow">in</span> <span class="n">used_features</span><span class="p">:</span>
+            <span class="nb">type</span> <span class="o">=</span> <span class="s">&#39;NVT&#39;</span>
+            <span class="n">thermostat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">environmentObjectList</span><span class="p">(</span>
+                                          <span class="n">Environment</span><span class="o">.</span><span class="n">NoseThermostat</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">t_parameters</span> <span class="o">=</span> <span class="n">thermostat</span><span class="o">.</span><span class="n">parameters</span>
+            <span class="n">t_coordinates</span> <span class="o">=</span> <span class="n">thermostat</span><span class="o">.</span><span class="n">coordinates</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">t_parameters</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+            <span class="n">t_coordinates</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">Features</span><span class="o">.</span><span class="n">AndersenBarostatFeature</span> <span class="ow">in</span> <span class="n">used_features</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">cellVolume</span><span class="p">()</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Barostat requires finite volume universe&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">type</span> <span class="o">==</span> <span class="s">&#39;NVE&#39;</span><span class="p">:</span>
+                <span class="nb">type</span> <span class="o">=</span> <span class="s">&#39;NPH&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">type</span> <span class="o">=</span> <span class="s">&#39;NPT&#39;</span>
+            <span class="n">barostat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">environmentObjectList</span><span class="p">(</span>
+                                          <span class="n">Environment</span><span class="o">.</span><span class="n">AndersenBarostat</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">b_parameters</span> <span class="o">=</span> <span class="n">barostat</span><span class="o">.</span><span class="n">parameters</span>
+            <span class="n">b_coordinates</span> <span class="o">=</span> <span class="n">barostat</span><span class="o">.</span><span class="n">coordinates</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">b_parameters</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+            <span class="n">b_coordinates</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+
+        <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                <span class="n">configuration</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">velocities</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                <span class="n">masses</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">fixed</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">evaluator</span><span class="p">,</span>
+                <span class="n">constraints</span><span class="p">,</span> <span class="n">const_distances_sq</span><span class="p">,</span> <span class="n">c_blocks</span><span class="p">,</span>
+                <span class="n">t_parameters</span><span class="p">,</span> <span class="n">t_coordinates</span><span class="p">,</span>
+                <span class="n">b_parameters</span><span class="p">,</span> <span class="n">b_coordinates</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;delta_t&#39;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;first_step&#39;</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;steps&#39;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getActions</span><span class="p">(),</span>
+                <span class="nb">type</span> <span class="o">+</span> <span class="s">&#39; dynamics trajectory with &#39;</span> <span class="o">+</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">optionString</span><span class="p">([</span><span class="s">&#39;delta_t&#39;</span><span class="p">,</span> <span class="s">&#39;steps&#39;</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">MMTK_dynamics</span><span class="o">.</span><span class="n">integrateVV</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Velocity scaling, removal of global translation/rotation</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="VelocityScaler"><a class="viewcode-back" href="../../modules.html#MMTK.Dynamics.VelocityScaler">[docs]</a><span class="k">class</span> <span class="nc">VelocityScaler</span><span class="p">(</span><span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Periodic velocity scaling action</span>
+
+<span class="sd">    A VelocityScaler object is used in the action list of</span>
+<span class="sd">    a VelocityVerletIntegrator. It rescales all atomic velocities</span>
+<span class="sd">    by a common factor to make the temperature of the system equal</span>
+<span class="sd">    to a predefined value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">first</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param temperature: the temperature value to which the velocities</span>
+<span class="sd">                            should be scaled</span>
+<span class="sd">        :type temperature: float</span>
+<span class="sd">        :param window: the deviation from the ideal temperature that</span>
+<span class="sd">                       is tolerated in either direction before rescaling</span>
+<span class="sd">                       takes place</span>
+<span class="sd">        :type window: float</span>
+<span class="sd">        :param first: the number of the first step at which the action</span>
+<span class="sd">                      is executed</span>
+<span class="sd">        :type first: int</span>
+<span class="sd">        :param last: the number of the first step at which the action</span>
+<span class="sd">                     is no longer executed. A value of None indicates</span>
+<span class="sd">                     that the action should be executed indefinitely.</span>
+<span class="sd">        :type last: int</span>
+<span class="sd">        :param skip: the number of steps to skip between two applications</span>
+<span class="sd">                     of the action</span>
+<span class="sd">        :type skip: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">skip</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">temperature</span><span class="p">,</span> <span class="n">window</span><span class="p">],</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Cfunction</span> <span class="o">=</span> <span class="n">MMTK_dynamics</span><span class="o">.</span><span class="n">scaleVelocities</span>
+</div>
+<div class="viewcode-block" id="Heater"><a class="viewcode-back" href="../../modules.html#MMTK.Dynamics.Heater">[docs]</a><span class="k">class</span> <span class="nc">Heater</span><span class="p">(</span><span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Periodic heating action</span>
+
+<span class="sd">    A Heater object us used in the action list of a VelocityVerletIntegrator.</span>
+<span class="sd">    It scales the velocities to a temperature that increases over time.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp1</span><span class="p">,</span> <span class="n">temp2</span><span class="p">,</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">first</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param temp1: the temperature value to which the velocities</span>
+<span class="sd">                      should be scaled initially</span>
+<span class="sd">        :type temp1: float</span>
+<span class="sd">        :param temp2: the final temperature value to which the velocities</span>
+<span class="sd">                      should be scaled</span>
+<span class="sd">        :type temp2: float</span>
+<span class="sd">        :param gradient: the temperature gradient (in K/ps)</span>
+<span class="sd">        :type gradient: float</span>
+<span class="sd">        :param first: the number of the first step at which the action</span>
+<span class="sd">                      is executed</span>
+<span class="sd">        :type first: int</span>
+<span class="sd">        :param last: the number of the first step at which the action</span>
+<span class="sd">                     is no longer executed. A value of None indicates</span>
+<span class="sd">                     that the action should be executed indefinitely.</span>
+<span class="sd">        :type last: int</span>
+<span class="sd">        :param skip: the number of steps to skip between two applications</span>
+<span class="sd">                     of the action</span>
+<span class="sd">        :type skip: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">skip</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">temp1</span><span class="p">,</span> <span class="n">temp2</span><span class="p">,</span> <span class="n">gradient</span><span class="p">],</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Cfunction</span> <span class="o">=</span> <span class="n">MMTK_dynamics</span><span class="o">.</span><span class="n">heat</span>
+</div>
+<div class="viewcode-block" id="BarostatReset"><a class="viewcode-back" href="../../modules.html#MMTK.Dynamics.BarostatReset">[docs]</a><span class="k">class</span> <span class="nc">BarostatReset</span><span class="p">(</span><span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Barostat reset action</span>
+
+<span class="sd">    A BarostatReset object is used in the action list of a</span>
+<span class="sd">    VelocityVerletIntegrator. It resets the barostat coordinate</span>
+<span class="sd">    to zero.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param first: the number of the first step at which the action</span>
+<span class="sd">                      is executed</span>
+<span class="sd">        :type first: int</span>
+<span class="sd">        :param last: the number of the first step at which the action</span>
+<span class="sd">                     is no longer executed. A value of None indicates</span>
+<span class="sd">                     that the action should be executed indefinitely.</span>
+<span class="sd">        :type last: int</span>
+<span class="sd">        :param skip: the number of steps to skip between two applications</span>
+<span class="sd">                     of the action</span>
+<span class="sd">        :type skip: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">skip</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Cfunction</span> <span class="o">=</span> <span class="n">MMTK_dynamics</span><span class="o">.</span><span class="n">resetBarostat</span>
+</div>
+<div class="viewcode-block" id="TranslationRemover"><a class="viewcode-back" href="../../modules.html#MMTK.Dynamics.TranslationRemover">[docs]</a><span class="k">class</span> <span class="nc">TranslationRemover</span><span class="p">(</span><span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Action that eliminates global translation</span>
+
+<span class="sd">    A TranslationRemover object is used in the action list of a</span>
+<span class="sd">    VelocityVerletIntegrator. It subtracts the total velocity</span>
+<span class="sd">    of the system from each atomic velocity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param first: the number of the first step at which the action</span>
+<span class="sd">                      is executed</span>
+<span class="sd">        :type first: int</span>
+<span class="sd">        :param last: the number of the first step at which the action</span>
+<span class="sd">                     is no longer executed. A value of None indicates</span>
+<span class="sd">                     that the action should be executed indefinitely.</span>
+<span class="sd">        :type last: int</span>
+<span class="sd">        :param skip: the number of steps to skip between two applications</span>
+<span class="sd">                     of the action</span>
+<span class="sd">        :type skip: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">skip</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Cfunction</span> <span class="o">=</span> <span class="n">MMTK_dynamics</span><span class="o">.</span><span class="n">removeTranslation</span>
+</div>
+<div class="viewcode-block" id="RotationRemover"><a class="viewcode-back" href="../../modules.html#MMTK.Dynamics.RotationRemover">[docs]</a><span class="k">class</span> <span class="nc">RotationRemover</span><span class="p">(</span><span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Action that eliminates global rotation</span>
+
+<span class="sd">    A RotationRemover object is used in the action list of a</span>
+<span class="sd">    VelocityVerletIntegrator. It adjusts the atomic velocities</span>
+<span class="sd">    such that the total angular momentum is zero.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param first: the number of the first step at which the action</span>
+<span class="sd">                      is executed</span>
+<span class="sd">        :type first: int</span>
+<span class="sd">        :param last: the number of the first step at which the action</span>
+<span class="sd">                     is no longer executed. A value of None indicates</span>
+<span class="sd">                     that the action should be executed indefinitely.</span>
+<span class="sd">        :type last: int</span>
+<span class="sd">        :param skip: the number of steps to skip between two applications</span>
+<span class="sd">                     of the action</span>
+<span class="sd">        :type skip: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryAction</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">skip</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Cfunction</span> <span class="o">=</span> <span class="n">MMTK_dynamics</span><span class="o">.</span><span class="n">removeRotation</span>
+
+<span class="c">#</span>
+<span class="c"># Construct constraint arrays</span>
+<span class="c">#</span></div>
+<span class="k">def</span> <span class="nf">_constraintArrays</span><span class="p">(</span><span class="n">universe</span><span class="p">):</span>
+    <span class="n">nc</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">numberOfDistanceConstraints</span><span class="p">()</span>
+    <span class="n">constraints</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nc</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">)</span>
+    <span class="n">const_distances_sq</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nc</span><span class="p">,</span> <span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nc</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">c_blocks</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">universe</span><span class="o">.</span><span class="n">objectList</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">o</span><span class="o">.</span><span class="n">distanceConstraintList</span><span class="p">():</span>
+                <span class="n">constraints</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+                <span class="n">constraints</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+                <span class="n">const_distances_sq</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">c_blocks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">c_blocks</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">c_blocks</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">c_blocks</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Int</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">constraints</span><span class="p">,</span> <span class="n">const_distances_sq</span><span class="p">,</span> <span class="n">c_blocks</span>
+
+<span class="c">#</span>
+<span class="c"># Enforce distance constraints for current configuration</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">enforceConstraints</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">configuration</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">constraints</span><span class="p">,</span> <span class="n">const_distances_sq</span><span class="p">,</span> <span class="n">c_blocks</span> <span class="o">=</span> <span class="n">_constraintArrays</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">constraints</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="n">configuration</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">configuration</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+    <span class="n">MMTK_dynamics</span><span class="o">.</span><span class="n">enforceConstraints</span><span class="p">(</span><span class="n">universe</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span> <span class="n">configuration</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                     <span class="n">universe</span><span class="o">.</span><span class="n">masses</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                     <span class="n">constraints</span><span class="p">,</span> <span class="n">const_distances_sq</span><span class="p">,</span> <span class="n">c_blocks</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Project velocity vector onto the constraint surface</span>
+<span class="c">#</span>
+<span class="k">def</span> <span class="nf">projectVelocities</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">velocities</span><span class="p">):</span>
+    <span class="n">constraints</span><span class="p">,</span> <span class="n">const_distances_sq</span><span class="p">,</span> <span class="n">c_blocks</span> <span class="o">=</span> <span class="n">_constraintArrays</span><span class="p">(</span><span class="n">universe</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">constraints</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">MMTK_dynamics</span><span class="o">.</span><span class="n">projectVelocities</span><span class="p">(</span><span class="n">universe</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span>
+                                    <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                    <span class="n">velocities</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">universe</span><span class="o">.</span><span class="n">masses</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                    <span class="n">constraints</span><span class="p">,</span> <span class="n">const_distances_sq</span><span class="p">,</span> <span class="n">c_blocks</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

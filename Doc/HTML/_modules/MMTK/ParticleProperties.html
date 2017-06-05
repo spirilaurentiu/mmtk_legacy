@@ -1,0 +1,717 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.ParticleProperties &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.ParticleProperties</h1><div class="highlight"><pre>
+<span class="c"># This module implements classes that represent the atomic properties in a</span>
+<span class="c"># simulation, i.e. configurations, force vectors, etc.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Quantities defined for each particle in a universe</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span><span class="p">,</span> <span class="n">isVector</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">isTensor</span>
+<span class="kn">from</span> <span class="nn">Scientific.indexing</span> <span class="kn">import</span> <span class="n">index_expression</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="c">#</span>
+<span class="c"># Base class for all properties defined for a universe.</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="ParticleProperty"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleProperty">[docs]</a><span class="k">class</span> <span class="nc">ParticleProperty</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Property defined for each particle</span>
+
+<span class="sd">    This is an abstract base class; for creating instances, use one of</span>
+<span class="sd">    its subclasses.</span>
+
+<span class="sd">    ParticleProperty objects store properties that are defined per</span>
+<span class="sd">    particle, such as mass, position, velocity, etc. The value</span>
+<span class="sd">    corresponding to a particular atom can be retrieved or changed by</span>
+<span class="sd">    indexing with the atom object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data_rank</span><span class="p">,</span> <span class="n">value_rank</span><span class="p">):</span>
+        <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">=</span> <span class="n">universe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span>  <span class="n">universe</span><span class="o">.</span><span class="n">_version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">numberOfPoints</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_rank</span> <span class="o">=</span> <span class="n">data_rank</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">=</span> <span class="n">value_rank</span>
+
+    <span class="n">__safe_for_unpickling__</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">__had_initargs__</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
+
+    <span class="k">def</span> <span class="nf">_checkCompatibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">allow_scalar</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">isParticleProperty</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">other</span><span class="o">.</span><span class="n">data_rank</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_rank</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Incompatible types&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">universe</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Variables are for different universes&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">version</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Universe version numbers do not agree&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">value_rank</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_class</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span>
+            <span class="k">elif</span> <span class="n">allow_scalar</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value_rank</span><span class="o">==</span><span class="mi">0</span> <span class="ow">or</span> <span class="n">other</span><span class="o">.</span><span class="n">value_rank</span><span class="o">==</span><span class="mi">0</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">other</span><span class="o">.</span><span class="n">return_class</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_class</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Ranks do not match&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">isVector</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">isTensor</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_rank</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Incompatible types&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_class</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_class</span><span class="p">,</span> <span class="n">other</span>
+
+<div class="viewcode-block" id="ParticleProperty.zero"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleProperty.zero">[docs]</a>    <span class="k">def</span> <span class="nf">zero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: an object of the element type (scalar, vector, etc.)</span>
+<span class="sd">                  with the value 0.</span>
+<span class="sd">        :rtype: element type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="ParticleProperty.sumOverParticles"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleProperty.sumOverParticles">[docs]</a>    <span class="k">def</span> <span class="nf">sumOverParticles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the sum of the values for all particles.</span>
+<span class="sd">        :rtype: element type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+    <span class="k">def</span> <span class="nf">_arithmetic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="n">allow_scalar</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">a1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">return_class</span><span class="p">,</span> <span class="n">a2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checkCompatibility</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">allow_scalar</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">a2</span><span class="p">)</span> <span class="o">!=</span> <span class="n">N</span><span class="o">.</span><span class="n">ArrayType</span><span class="p">:</span>
+            <span class="n">a2</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">a2</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">a1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">a2</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">a1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">a1</span> <span class="o">=</span> <span class="n">a1</span><span class="p">[</span><span class="n">index_expression</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">+</span>
+                        <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">a2</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">index_expression</span><span class="p">[</span><span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">]]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">a2</span> <span class="o">=</span> <span class="n">a2</span><span class="p">[</span><span class="n">index_expression</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">+</span>
+                        <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">a1</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">index_expression</span><span class="p">[</span><span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">]]</span>
+        <span class="k">return</span> <span class="n">return_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">op</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arithmetic</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="p">)</span>
+
+    <span class="n">__radd__</span> <span class="o">=</span> <span class="n">__add__</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arithmetic</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">subtract</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arithmetic</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">N</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arithmetic</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">multiply</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+
+    <span class="n">__rmul__</span> <span class="o">=</span> <span class="n">__mul__</span>
+
+    <span class="k">def</span> <span class="nf">__div__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arithmetic</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">divide</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rdiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arithmetic</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">N</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">),</span> <span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__copy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">))</span>
+    <span class="n">__deepcopy__</span> <span class="o">=</span> <span class="n">__copy__</span>
+
+<div class="viewcode-block" id="ParticleProperty.assign"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleProperty.assign">[docs]</a>    <span class="k">def</span> <span class="nf">assign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Copy all values from another compatible ParticleProperty object.</span>
+
+<span class="sd">        :param other: the data source</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_checkCompatibility</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span>
+</div>
+<div class="viewcode-block" id="ParticleProperty.scaleBy"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleProperty.scaleBy">[docs]</a>    <span class="k">def</span> <span class="nf">scaleBy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Multiply all values by a factor</span>
+
+<span class="sd">        :param factor: the scale factor</span>
+<span class="sd">        :type factor: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span><span class="o">*</span><span class="n">factor</span>
+</div>
+<div class="viewcode-block" id="ParticleProperty.selectAtoms"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleProperty.selectAtoms">[docs]</a>    <span class="k">def</span> <span class="nf">selectAtoms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a collection containing all atoms a for which </span>
+<span class="sd">        condition(property[a]) is True.</span>
+
+<span class="sd">        :param condition: a test function</span>
+<span class="sd">        :type condition: callable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">MMTK.Collections</span> <span class="kn">import</span> <span class="n">Collection</span>
+        <span class="k">return</span> <span class="n">Collection</span><span class="p">([</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">atomList</span><span class="p">()</span>
+                           <span class="k">if</span> <span class="n">condition</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="n">a</span><span class="p">])])</span>
+</div></div>
+<span class="n">ParticleProperty</span><span class="o">.</span><span class="n">return_class</span> <span class="o">=</span> <span class="n">ParticleProperty</span>
+
+<span class="c">#</span>
+<span class="c"># One scalar per particle.</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="ParticleScalar"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleScalar">[docs]</a><span class="k">class</span> <span class="nc">ParticleScalar</span><span class="p">(</span><span class="n">ParticleProperty</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scalar property defined for each particle</span>
+
+<span class="sd">    ParticleScalar objects can be added to each other and</span>
+<span class="sd">    multiplied with scalars.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data_array</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the values are defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param data_array: the data array containing the values for each</span>
+<span class="sd">                           particle. If None, a new array containing</span>
+<span class="sd">                           zeros is created and used. Otherwise, the</span>
+<span class="sd">                           array myst be of shape (N,), where N is the</span>
+<span class="sd">                           number of particles in the universe.</span>
+<span class="sd">        :type data_array: Scientific.N.array_type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ParticleProperty</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">data_array</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">data_array</span>
+            <span class="k">if</span> <span class="n">data_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Data incompatible with universe&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">zero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.</span>
+
+<div class="viewcode-block" id="ParticleScalar.maximum"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleScalar.maximum">[docs]</a>    <span class="k">def</span> <span class="nf">maximum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the highest value in the data array particle</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ParticleScalar.minimum"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleScalar.minimum">[docs]</a>    <span class="k">def</span> <span class="nf">minimum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the smallest value in the data array particle</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">minimum</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">sumOverParticles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParticleScalar.applyFunction"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleScalar.applyFunction">[docs]</a>    <span class="k">def</span> <span class="nf">applyFunction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: a function that is applied to each data value</span>
+<span class="sd">        :returns: a new ParticleScalar object containing the function results</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ParticleScalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">))</span>
+
+</div></div>
+<span class="n">ParticleScalar</span><span class="o">.</span><span class="n">return_class</span> <span class="o">=</span> <span class="n">ParticleScalar</span>
+
+<span class="c">#</span>
+<span class="c"># One vector per particle.</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="ParticleVector"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleVector">[docs]</a><span class="k">class</span> <span class="nc">ParticleVector</span><span class="p">(</span><span class="n">ParticleProperty</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Vector property defined for each particle</span>
+
+<span class="sd">    ParticleVector objects can be added to each other and</span>
+<span class="sd">    multiplied with scalars or :class:`~MMTK.ParticleProperties.ParticleScalar` objects; all</span>
+<span class="sd">    of these operations result in another ParticleVector</span>
+<span class="sd">    object. Multiplication with a vector or another ParticleVector object</span>
+<span class="sd">    yields a :class:`~MMTK.ParticleProperties.ParticleScalar` object containing the dot products</span>
+<span class="sd">    for each particle. Multiplications that treat ParticleVectors</span>
+<span class="sd">    as vectors in a 3N-dimensional space are implemented as methods.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data_array</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the values are defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param data_array: the data array containing the values for each</span>
+<span class="sd">                           particle. If None, a new array containing</span>
+<span class="sd">                           zeros is created and used. Otherwise, the</span>
+<span class="sd">                           array myst be of shape (N,3), where N is the</span>
+<span class="sd">                           number of particles in the universe.</span>
+<span class="sd">        :type data_array: Scientific.N.array_type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ParticleProperty</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">data_array</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">data_array</span>
+            <span class="k">if</span> <span class="n">data_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Data incompatible with universe&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">return</span> <span class="n">Vector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">item</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">isParticleProperty</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">universe</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Variables are for different universes&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">*</span><span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[:,</span><span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">])</span>
+            <span class="k">elif</span> <span class="n">other</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ParticleScalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                                      <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">*</span> \
+                                                   <span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;not yet implemented&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">isVector</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">ParticleScalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                                  <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span>
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">*</span><span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">,:],</span>
+                                      <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">isTensor</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;not yet implemented&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">*</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="n">__rmul__</span> <span class="o">=</span> <span class="n">__mul__</span>
+    <span class="n">_product_with_vector</span> <span class="o">=</span> <span class="n">__mul__</span>
+
+    <span class="k">def</span> <span class="nf">zero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParticleVector.length"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleVector.length">[docs]</a>    <span class="k">def</span> <span class="nf">length</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the length (norm) of the vector for each particle</span>
+<span class="sd">        :rtype: :class:`~MMTK.ParticleProperties.ParticleScalar`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ParticleScalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                              <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+                                                  <span class="o">-</span><span class="mi">1</span><span class="p">)))</span>
+</div>
+    <span class="k">def</span> <span class="nf">sumOverParticles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Vector</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+<div class="viewcode-block" id="ParticleVector.norm"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleVector.norm">[docs]</a>    <span class="k">def</span> <span class="nf">norm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the norm of the ParticleVector seen as a 3N-dimensional</span>
+<span class="sd">                  vector</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span></div>
+    <span class="n">totalNorm</span> <span class="o">=</span> <span class="n">norm</span>
+
+    <span class="k">def</span> <span class="nf">scaledToNorm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">norm</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">norm</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">f</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParticleVector.dotProduct"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleVector.dotProduct">[docs]</a>    <span class="k">def</span> <span class="nf">dotProduct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: another ParticleVector</span>
+<span class="sd">        :type other: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :returns: the dot product with other, treating both operands</span>
+<span class="sd">                  as 3N-dimensional vectors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">universe</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Variables are for different universes&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">*</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="ParticleVector.massWeightedNorm"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleVector.massWeightedNorm">[docs]</a>    <span class="k">def</span> <span class="nf">massWeightedNorm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the mass-weighted norm of the ParticleVector seen as a</span>
+<span class="sd">                  3N-dimensional vector</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">masses</span><span class="p">()</span><span class="o">.</span><span class="n">array</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">m</span><span class="p">[:,</span> <span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">]</span> <span class="o">*</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+                      <span class="o">/</span> <span class="n">N</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">m</span><span class="p">))</span>
+</div>
+    <span class="k">def</span> <span class="nf">scaledToMassWeightedNorm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">norm</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">norm</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">massWeightedNorm</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">f</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParticleVector.massWeightedDotProduct"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleVector.massWeightedDotProduct">[docs]</a>    <span class="k">def</span> <span class="nf">massWeightedDotProduct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: another ParticleVector</span>
+<span class="sd">        :type other: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :returns: the mass-weighted dot product with other treating both</span>
+<span class="sd">                  operands as 3N-dimensional vectors</span>
+<span class="sd">        :rtype: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">universe</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Variables are for different universes&#39;</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">masses</span><span class="p">()</span><span class="o">.</span><span class="n">array</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">*</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span> <span class="o">*</span> \
+                                    <span class="n">m</span><span class="p">[:,</span> <span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">]))</span>
+</div>
+<div class="viewcode-block" id="ParticleVector.dyadicProduct"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleVector.dyadicProduct">[docs]</a>    <span class="k">def</span> <span class="nf">dyadicProduct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: another ParticleVector</span>
+<span class="sd">        :type other: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">        :returns: the dyadic product with other</span>
+<span class="sd">        :rtype: :class:`~MMTK.ParticleProperties.ParticleTensor`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">universe</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Variables are for different universes&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ParticleTensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">]</span> <span class="o">*</span> \
+                              <span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[:,</span> <span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">,</span> <span class="p">:])</span>
+</div></div>
+<span class="n">ParticleVector</span><span class="o">.</span><span class="n">return_class</span> <span class="o">=</span> <span class="n">ParticleVector</span>
+
+<span class="c">#</span>
+<span class="c"># Configuration variables: ParticleVector plus universe parameters</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="Configuration"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.Configuration">[docs]</a><span class="k">class</span> <span class="nc">Configuration</span><span class="p">(</span><span class="n">ParticleVector</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Configuration of a universe</span>
+
+<span class="sd">    Configuration instances represent a configuration of a universe,</span>
+<span class="sd">    consisting of positions for all atoms (like in a ParticleVector) plus</span>
+<span class="sd">    the geometry of the universe itself, e.g. the cell shape for</span>
+<span class="sd">    periodic universes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data_array</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">cell</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the values are defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param data_array: the data array containing the values for each</span>
+<span class="sd">                           particle. If None, a new array containing</span>
+<span class="sd">                           zeros is created and used. Otherwise, the</span>
+<span class="sd">                           array myst be of shape (N,3), where N is the</span>
+<span class="sd">                           number of particles in the universe.</span>
+<span class="sd">        :type data_array: Scientific.N.array_type</span>
+<span class="sd">        :param cell: the cell parameters of the universe,</span>
+<span class="sd">                     i.e. the return value of universe.cellParameters()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ParticleVector</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data_array</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cell</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cell_parameters</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">cellParameters</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cell_parameters</span> <span class="o">=</span> <span class="n">cell</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">ParticleVector</span><span class="o">.</span><span class="n">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Configuration</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell_parameters</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">ParticleVector</span><span class="o">.</span><span class="n">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Configuration</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell_parameters</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__copy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">),</span>
+                              <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cell_parameters</span><span class="p">))</span>
+    <span class="n">__deepcopy__</span> <span class="o">=</span> <span class="n">__copy__</span>
+
+    <span class="k">def</span> <span class="nf">hasValidPositions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">logical_and</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">less</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                                   <span class="n">Utility</span><span class="o">.</span><span class="n">undefined_limit</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">convertToBoxCoordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">_realToBoxPointArray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                                   <span class="bp">self</span><span class="o">.</span><span class="n">cell_parameters</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">convertFromBoxCoordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">_boxToRealPointArray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                                                   <span class="bp">self</span><span class="o">.</span><span class="n">cell_parameters</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">array</span>
+
+<span class="c">#</span>
+<span class="c"># One tensor per particle.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="ParticleTensor"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.ParticleTensor">[docs]</a><span class="k">class</span> <span class="nc">ParticleTensor</span><span class="p">(</span><span class="n">ParticleProperty</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rank-2 tensor property defined for each particle</span>
+
+<span class="sd">    ParticleTensor objects can be added to each other and</span>
+<span class="sd">    multiplied with scalars or :class:`~MMTK.ParticleProperties.ParticleScalar` objects; all</span>
+<span class="sd">    of these operations result in another ParticleTensor object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data_array</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the values are defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param data_array: the data array containing the values for each</span>
+<span class="sd">                           particle. If None, a new array containing</span>
+<span class="sd">                           zeros is created and used. Otherwise, the</span>
+<span class="sd">                           array myst be of shape (N,3,3), where N is the</span>
+<span class="sd">                           number of particles in the universe.</span>
+<span class="sd">        :type data_array: Scientific.N.array_type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ParticleProperty</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">data_array</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">data_array</span>
+            <span class="k">if</span> <span class="n">data_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Data incompatible with universe&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">return</span> <span class="n">Tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">item</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">isParticleProperty</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">universe</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Variables are for different universes&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ParticleTensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">*</span><span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[:,</span>
+                                                             <span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">,</span>
+                                                             <span class="n">N</span><span class="o">.</span><span class="n">NewAxis</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;not yet implemented&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">isVector</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;not yet implemented&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">isTensor</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;not yet implemented&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ParticleTensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">*</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="n">__rmul__</span> <span class="o">=</span> <span class="n">__mul__</span>
+
+    <span class="k">def</span> <span class="nf">zero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Tensor</span><span class="p">([[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]])</span>
+
+    <span class="k">def</span> <span class="nf">sumOverParticles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">trace</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ParticleScalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+                              <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+</div>
+<span class="n">ParticleTensor</span><span class="o">.</span><span class="n">return_class</span> <span class="o">=</span> <span class="n">ParticleTensor</span>
+
+<span class="c">#</span>
+<span class="c"># One tensor per pair, symmetric.</span>
+<span class="c">#</span>
+<span class="k">class</span> <span class="nc">SymmetricPairTensor</span><span class="p">(</span><span class="n">ParticleProperty</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data_array</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the values are defined</span>
+<span class="sd">        :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">        :param data_array: the data array containing the values for each</span>
+<span class="sd">                           particle. If None, a new array containing</span>
+<span class="sd">                           zeros is created and used. Otherwise, the</span>
+<span class="sd">                           array myst be of shape (N,3,N,3), where N is the</span>
+<span class="sd">                           number of particles in the universe.</span>
+<span class="sd">        :type data_array: Scientific.N.array_type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ParticleProperty</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">data_array</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">data_array</span>
+            <span class="k">if</span> <span class="n">data_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="ow">or</span> \
+               <span class="n">data_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Data incompatible with universe&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">symmetrized</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="n">i1</span><span class="p">,</span> <span class="n">i2</span> <span class="o">=</span> <span class="n">item</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i1</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">i1</span> <span class="o">=</span> <span class="n">i1</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i2</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">i2</span> <span class="o">=</span> <span class="n">i2</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">if</span> <span class="n">i1</span> <span class="o">&gt;</span> <span class="n">i2</span><span class="p">:</span>
+            <span class="n">i1</span><span class="p">,</span> <span class="n">i2</span> <span class="o">=</span> <span class="n">i2</span><span class="p">,</span> <span class="n">i1</span>
+            <span class="k">return</span> <span class="n">Tensor</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">i1</span><span class="p">,:,</span><span class="n">i2</span><span class="p">,:]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">i1</span><span class="p">,:,</span><span class="n">i2</span><span class="p">,:])</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">i1</span><span class="p">,</span> <span class="n">i2</span> <span class="o">=</span> <span class="n">item</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i1</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">i1</span> <span class="o">=</span> <span class="n">i1</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i2</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">i2</span> <span class="o">=</span> <span class="n">i2</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">if</span> <span class="n">i1</span> <span class="o">&gt;</span> <span class="n">i2</span><span class="p">:</span>
+            <span class="n">i1</span><span class="p">,</span> <span class="n">i2</span> <span class="o">=</span> <span class="n">i2</span><span class="p">,</span> <span class="n">i1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">i1</span><span class="p">,:,</span><span class="n">i2</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span><span class="o">.</span><span class="n">array</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">i1</span><span class="p">,:,</span><span class="n">i2</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">zero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Tensor</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="p">[[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]])</span>
+
+    <span class="k">def</span> <span class="nf">symmetrize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">symmetrized</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">nn</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">n</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nn</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">nn</span><span class="p">):</span>
+                    <span class="n">a</span><span class="p">[</span><span class="n">j</span><span class="p">,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">symmetrized</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">symmetrize</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">isParticleProperty</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">universe</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Variables are for different universes&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other</span><span class="o">.</span><span class="n">value_rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">sa</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">n</span><span class="p">))</span>
+                <span class="n">oa</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">n</span><span class="p">,</span> <span class="p">))</span>
+                <span class="k">return</span> <span class="n">ParticleVector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">sa</span><span class="p">,</span> <span class="n">oa</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;not yet implemented&#39;</span><span class="p">)</span>
+
+
+<span class="n">SymmetricPairTensor</span><span class="o">.</span><span class="n">return_class</span> <span class="o">=</span> <span class="n">SymmetricPairTensor</span>
+
+<span class="c">#</span>
+<span class="c"># Type check function</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="isParticleProperty"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.isParticleProperty">[docs]</a><span class="k">def</span> <span class="nf">isParticleProperty</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param object: any object</span>
+<span class="sd">    :returns: True if object is a :class:`~MMTK.ParticleProperties.ParticleProperty`</span>
+<span class="sd">    :rtype: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">ParticleProperty</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="isConfiguration"><a class="viewcode-back" href="../../modules.html#MMTK.ParticleProperties.isConfiguration">[docs]</a><span class="k">def</span> <span class="nf">isConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param object: any object</span>
+<span class="sd">    :returns: True if object is a :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">    :rtype: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">Configuration</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

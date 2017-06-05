@@ -1,0 +1,237 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.DCD &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.DCD</h1><div class="highlight"><pre>
+<span class="c"># This module implements a DCD reader/writer</span>
+<span class="c">#</span>
+<span class="c"># Written by Lutz Ehrlich</span>
+<span class="c"># Adapted to MMTK conventions by Konrad Hinsen</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reading and writing of DCD trajectory files</span>
+
+<span class="sd">The DCD format for trajectories is used by CHARMM, X-Plor,</span>
+<span class="sd">and NAMD. It can be read by various visualization programs.</span>
+
+<span class="sd">The DCD format is defined as a binary (unformatted) Fortran</span>
+<span class="sd">format and is therefore platform-dependent.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">import</span> <span class="nn">MMTK_DCD</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">PDB</span><span class="p">,</span> <span class="n">Trajectory</span><span class="p">,</span> <span class="n">Units</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+
+<div class="viewcode-block" id="DCDReader"><a class="viewcode-back" href="../../modules.html#MMTK.DCD.DCDReader">[docs]</a><span class="k">class</span> <span class="nc">DCDReader</span><span class="p">(</span><span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryGenerator</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reader for DCD trajectories (CHARMM/X-Plor/NAMD)</span>
+
+<span class="sd">    A DCDReader reads a DCD trajectory and &quot;plays back&quot; the</span>
+<span class="sd">    data as if it were generated directly by an integrator.</span>
+<span class="sd">    The universe for which the DCD file is read must be</span>
+<span class="sd">    perfectly compatible with the data in the file, including</span>
+<span class="sd">    an identical internal atom numbering. This can be guaranteed</span>
+<span class="sd">    only if the universe was created from a PDB file that is</span>
+<span class="sd">    compatible with the DCD file without leaving out any</span>
+<span class="sd">    part of the system.</span>
+
+<span class="sd">    Reading is started by calling the reader object.</span>
+<span class="sd">    The following data categories and variables are available for</span>
+<span class="sd">    output:</span>
+
+<span class="sd">    * category &quot;time&quot;: time</span>
+<span class="sd">    * category &quot;configuration&quot;: configuration</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">default_options</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">available_data</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;configuration&#39;</span><span class="p">,</span> <span class="s">&#39;time&#39;</span><span class="p">]</span>
+
+    <span class="n">restart_data</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param universe: the universe for which the information from the</span>
+<span class="sd">                         trajectory file is read</span>
+<span class="sd">        :param options: keyword options</span>
+<span class="sd">        :keyword dcd_file: the name of the DCD trajecory file to be read</span>
+<span class="sd">        :keyword actions: a list of actions to be executed periodically</span>
+<span class="sd">                          (default is none)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Trajectory</span><span class="o">.</span><span class="n">TrajectoryGenerator</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setCallOptions</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+        <span class="n">configuration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span>
+        <span class="n">MMTK_DCD</span><span class="o">.</span><span class="n">readDCD</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">universe</span><span class="p">,</span> <span class="n">configuration</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+                         <span class="bp">self</span><span class="o">.</span><span class="n">getActions</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOption</span><span class="p">(</span><span class="s">&#39;dcd_file&#39;</span><span class="p">))</span>
+
+        </div>
+<span class="k">def</span> <span class="nf">writeDCD</span><span class="p">(</span><span class="n">vector_list</span><span class="p">,</span> <span class="n">dcd_file_name</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">atom_order</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+             <span class="n">delta_t</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">conf_flag</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">universe</span> <span class="o">=</span> <span class="n">vector_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span>
+    <span class="n">natoms</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">numberOfPoints</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">atom_order</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">atom_order</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">arrayrange</span><span class="p">(</span><span class="n">natoms</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">atom_order</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">atom_order</span><span class="p">)</span>
+
+    <span class="n">i_start</span> <span class="o">=</span> <span class="mi">0</span>       <span class="c"># always start at frame 0</span>
+    <span class="n">n_savc</span>  <span class="o">=</span> <span class="mi">1</span>       <span class="c"># save every frame</span>
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">MMTK_DCD</span><span class="o">.</span><span class="n">writeOpenDCD</span><span class="p">(</span><span class="n">dcd_file_name</span><span class="p">,</span> <span class="n">natoms</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">vector_list</span><span class="p">),</span>
+                               <span class="n">i_start</span><span class="p">,</span> <span class="n">n_savc</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">vector</span> <span class="ow">in</span> <span class="n">vector_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">conf_flag</span><span class="p">:</span>
+            <span class="n">vector</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">contiguousObjectConfiguration</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">vector</span><span class="p">)</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">factor</span><span class="o">*</span><span class="n">vector</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">array</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">atom_order</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">Float16</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">array</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">atom_order</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">Float16</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">array</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">atom_order</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">Float16</span><span class="p">)</span>
+        <span class="n">MMTK_DCD</span><span class="o">.</span><span class="n">writeDCDStep</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    <span class="n">MMTK_DCD</span><span class="o">.</span><span class="n">writeCloseDCD</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">writePDB</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="n">pdb_file_name</span><span class="p">):</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">if</span> <span class="n">universe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">configuration</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">contiguousObjectConfiguration</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span>
+                                                               <span class="n">configuration</span><span class="p">)</span>
+    <span class="n">pdb</span> <span class="o">=</span> <span class="n">PDB</span><span class="o">.</span><span class="n">PDBOutputFile</span><span class="p">(</span><span class="n">pdb_file_name</span><span class="p">,</span> <span class="s">&#39;xplor&#39;</span><span class="p">)</span>
+    <span class="n">pdb</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">configuration</span><span class="p">)</span>
+    <span class="n">sequence</span> <span class="o">=</span> <span class="n">pdb</span><span class="o">.</span><span class="n">atom_sequence</span>
+    <span class="n">pdb</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">sequence</span>
+
+<div class="viewcode-block" id="writeDCDPDB"><a class="viewcode-back" href="../../modules.html#MMTK.DCD.writeDCDPDB">[docs]</a><span class="k">def</span> <span class="nf">writeDCDPDB</span><span class="p">(</span><span class="n">conf_list</span><span class="p">,</span> <span class="n">dcd_file_name</span><span class="p">,</span> <span class="n">pdb_file_name</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Write a sequence of configurations to a DCD file and generate</span>
+<span class="sd">    a compatible PDB file.</span>
+
+<span class="sd">    :param conf_list: the sequence of configurations</span>
+<span class="sd">    :type conf_list: sequence of :class:`~MMTK.ParticleProperties.Configuration`</span>
+<span class="sd">    :param dcd_file_name: the name of the DCD file</span>
+<span class="sd">    :type dcd_file_name: str</span>
+<span class="sd">    :param pdb_file_name: the name of the PDB file</span>
+<span class="sd">    :type pdb_file_name: str</span>
+<span class="sd">    :param delta_t: the time step between two configurations</span>
+<span class="sd">    :type delta_t: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">universe</span> <span class="o">=</span> <span class="n">conf_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span>
+    <span class="n">sequence</span> <span class="o">=</span> <span class="n">writePDB</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">conf_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pdb_file_name</span><span class="p">)</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">sequence</span><span class="p">)</span>
+    <span class="n">writeDCD</span><span class="p">(</span><span class="n">conf_list</span><span class="p">,</span> <span class="n">dcd_file_name</span><span class="p">,</span> <span class="mf">1.</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="writeVelocityDCDPDB"><a class="viewcode-back" href="../../modules.html#MMTK.DCD.writeVelocityDCDPDB">[docs]</a><span class="k">def</span> <span class="nf">writeVelocityDCDPDB</span><span class="p">(</span><span class="n">vel_list</span><span class="p">,</span> <span class="n">dcd_file_name</span><span class="p">,</span> <span class="n">pdb_file_name</span><span class="p">,</span> <span class="n">delta_t</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Write a sequence of velocity particle vectors to a DCD file and generate</span>
+<span class="sd">    a compatible PDB file.</span>
+
+<span class="sd">    :param vel_list: the sequence of velocity particle vectors</span>
+<span class="sd">    :type vel_list: sequence of :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">    :param dcd_file_name: the name of the DCD file</span>
+<span class="sd">    :type dcd_file_name: str</span>
+<span class="sd">    :param pdb_file_name: the name of the PDB file</span>
+<span class="sd">    :type pdb_file_name: str</span>
+<span class="sd">    :param delta_t: the time step between two velocity sets</span>
+<span class="sd">    :type delta_t: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">universe</span> <span class="o">=</span> <span class="n">vel_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">universe</span>
+    <span class="n">sequence</span> <span class="o">=</span> <span class="n">writePDB</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">(),</span> <span class="n">pdb_file_name</span><span class="p">)</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">sequence</span><span class="p">)</span>
+    <span class="n">writeDCD</span><span class="p">(</span><span class="n">vel_list</span><span class="p">,</span> <span class="n">dcd_file_name</span><span class="p">,</span> <span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">Units</span><span class="o">.</span><span class="n">Ang</span><span class="o">/</span><span class="n">Units</span><span class="o">.</span><span class="n">akma_time</span><span class="p">),</span>
+             <span class="n">indices</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

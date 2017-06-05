@@ -1,0 +1,515 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Bonds &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Bonds</h1><div class="highlight"><pre>
+<span class="c"># This module implements classes that represent lists of bonds,</span>
+<span class="c"># bond angles, and dihedral angles.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Bonds, bond lists, bond angle lists, and dihedral angle lists</span>
+
+<span class="sd">The classes in this module are normally not used directly from</span>
+<span class="sd">client code. They are used by the classes in ChemicalObjects and</span>
+<span class="sd">ForceField.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Database</span><span class="p">,</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+
+<span class="c">#</span>
+<span class="c"># Bonds</span>
+<span class="c">#</span>
+<span class="c"># Bond objects are created from the specifications in the data base.</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="Bond"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.Bond">[docs]</a><span class="k">class</span> <span class="nc">Bond</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Chemical bond</span>
+
+<span class="sd">    A bond links two atoms (attributes a1 and a2)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blueprint</span><span class="p">,</span> <span class="n">memo</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">blueprint</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">type</span><span class="p">(()):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">=</span> <span class="n">blueprint</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="n">blueprint</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">=</span> <span class="n">Database</span><span class="o">.</span><span class="n">instantiate</span><span class="p">(</span><span class="n">blueprint</span><span class="o">.</span><span class="n">a1</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="n">Database</span><span class="o">.</span><span class="n">instantiate</span><span class="p">(</span><span class="n">blueprint</span><span class="o">.</span><span class="n">a2</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span>
+        <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="o">.</span><span class="n">registerObject</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">blueprintclass</span> <span class="o">=</span> <span class="n">Database</span><span class="o">.</span><span class="n">BlueprintBond</span>
+
+    <span class="n">__safe_for_unpickling__</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">__had_initargs__</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;Bond(&#39;</span> <span class="o">+</span> <span class="sb">`self.a1`</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span> <span class="o">+</span> <span class="sb">`self.a2`</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+<div class="viewcode-block" id="Bond.hasAtom"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.Bond.hasAtom">[docs]</a>    <span class="k">def</span> <span class="nf">hasAtom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param a: an atom</span>
+<span class="sd">        :type a: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :returns: True if a participates in the bond</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">a</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="ow">or</span> <span class="n">a</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span>
+</div>
+<div class="viewcode-block" id="Bond.otherAtom"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.Bond.otherAtom">[docs]</a>    <span class="k">def</span> <span class="nf">otherAtom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param a: an atom involved in the bond</span>
+<span class="sd">        :type a: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :returns: the atom at the other end of the bond</span>
+<span class="sd">        :rtype: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :raises ValueError: if a does not belong to the bond</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">a</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span>
+        <span class="k">elif</span> <span class="n">a</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;atom not in bond&#39;</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_graphics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">distance_fn</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="o">==</span> <span class="s">&#39;ball_and_stick&#39;</span> <span class="ow">or</span> <span class="n">model</span> <span class="o">==</span> <span class="s">&#39;vdw_and_stick&#39;</span><span class="p">:</span>
+            <span class="n">radius</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;stick_radius&#39;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">model</span> <span class="o">==</span> <span class="s">&#39;wireframe&#39;</span><span class="p">:</span>
+            <span class="n">radius</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">p1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">p1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">p2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">bond_vector</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">distance_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
+            <span class="n">cut</span> <span class="o">=</span> <span class="n">bond_vector</span> <span class="o">!=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">p2</span><span class="o">-</span><span class="n">p1</span><span class="p">)</span>
+            <span class="n">color1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="o">.</span><span class="n">_atomColor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+            <span class="n">color2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="o">.</span><span class="n">_atomColor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+            <span class="n">material1</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">EmissiveMaterial</span><span class="p">(</span><span class="n">color1</span><span class="p">)</span>
+            <span class="n">material2</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">EmissiveMaterial</span><span class="p">(</span><span class="n">color2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">color1</span> <span class="o">==</span> <span class="n">color2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">cut</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">radius</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">material</span> <span class="o">=</span> <span class="n">material1</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Cylinder</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span>
+                                                   <span class="n">material</span> <span class="o">=</span> <span class="n">material1</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">radius</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p1</span><span class="o">+</span><span class="n">bond_vector</span><span class="p">,</span>
+                                               <span class="n">material</span> <span class="o">=</span> <span class="n">material1</span><span class="p">))</span>
+                    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">p2</span><span class="p">,</span> <span class="n">p2</span><span class="o">-</span><span class="n">bond_vector</span><span class="p">,</span>
+                                               <span class="n">material</span> <span class="o">=</span> <span class="n">material2</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Cylinder</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p1</span><span class="o">+</span><span class="n">bond_vector</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span>
+                                                   <span class="n">material</span> <span class="o">=</span> <span class="n">material1</span><span class="p">))</span>
+                    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Cylinder</span><span class="p">(</span><span class="n">p2</span><span class="p">,</span> <span class="n">p2</span><span class="o">-</span><span class="n">bond_vector</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span>
+                                                   <span class="n">material</span> <span class="o">=</span> <span class="n">material2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">objects</span>
+</div>
+<span class="n">Database</span><span class="o">.</span><span class="n">registerInstanceClass</span><span class="p">(</span><span class="n">Bond</span><span class="o">.</span><span class="n">blueprintclass</span><span class="p">,</span> <span class="n">Bond</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Bond angles</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="BondAngle"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.BondAngle">[docs]</a><span class="k">class</span> <span class="nc">BondAngle</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bond angle</span>
+<span class="sd">    </span>
+<span class="sd">    A bond angle is the angle between two bonds that share a common atom.</span>
+<span class="sd">    It is defined by two bond objects (attributes b1 and b2) and an atom</span>
+<span class="sd">    object (the common atom, attribute ca).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="p">,</span> <span class="n">ca</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b1</span> <span class="o">=</span> <span class="n">b1</span> <span class="c"># bond 1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b2</span> <span class="o">=</span> <span class="n">b2</span> <span class="c"># bond 2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ca</span> <span class="o">=</span> <span class="n">ca</span> <span class="c"># common atom</span>
+        <span class="k">if</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">=</span> <span class="n">b1</span><span class="o">.</span><span class="n">otherAtom</span><span class="p">(</span><span class="n">ca</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="n">b2</span><span class="o">.</span><span class="n">otherAtom</span><span class="p">(</span><span class="n">ca</span><span class="p">)</span>
+        <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="o">.</span><span class="n">registerObject</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;BondAngle(&#39;</span> <span class="o">+</span> <span class="sb">`self.a1`</span> <span class="o">+</span><span class="s">&#39;,&#39;</span> <span class="o">+</span> <span class="sb">`self.ca`</span> <span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">+</span> <span class="sb">`self.a2`</span> <span class="o">+</span><span class="s">&#39;)&#39;</span>
+
+<div class="viewcode-block" id="BondAngle.otherBond"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.BondAngle.otherBond">[docs]</a>    <span class="k">def</span> <span class="nf">otherBond</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bond</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param bond: a bond involved in the angle</span>
+<span class="sd">        :type bond: :class:`~MMTK.Bonds.Bond`</span>
+<span class="sd">        :returns: the other bond involved in the angle</span>
+<span class="sd">        :rtype: :class:`~MMTK.Bonds.Bond`</span>
+<span class="sd">        :raises ValueError: if bond does not belong to the angle</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">bond</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span>
+        <span class="k">elif</span> <span class="n">bond</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;bond not in bond angle&#39;</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Dihedral angles</span>
+<span class="c">#</span></div></div>
+<div class="viewcode-block" id="DihedralAngle"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.DihedralAngle">[docs]</a><span class="k">class</span> <span class="nc">DihedralAngle</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dihedral angle</span>
+<span class="sd">    </span>
+<span class="sd">    A dihedral angle is the angle between two planes that are defined by</span>
+<span class="sd">    BondAngle objects (attributes ba1 and ba2) and their common bond</span>
+<span class="sd">    (attribute cb).</span>
+
+<span class="sd">    There are proper dihedrals (four atoms linked by three bonds in</span>
+<span class="sd">    sequence) and improper dihedrals (a central atom linked to three</span>
+<span class="sd">    surrounding atoms by three bonds). The boolean attribute improper</span>
+<span class="sd">    indicates whether a dihedral is an improper one.    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ba1</span><span class="p">,</span> <span class="n">ba2</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ba1</span> <span class="o">=</span> <span class="n">ba1</span> <span class="c"># bond angle 1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ba2</span> <span class="o">=</span> <span class="n">ba2</span> <span class="c"># bond angle 2</span>
+        <span class="c"># cb is the common bond, i.e. the central bond for a proper dihedral</span>
+        <span class="k">if</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ba2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">improper</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="o">.</span><span class="n">ca</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba2</span><span class="o">.</span><span class="n">ca</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">improper</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="o">.</span><span class="n">otherBond</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b2</span> <span class="o">=</span> <span class="n">cb</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba2</span><span class="o">.</span><span class="n">otherBond</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="o">.</span><span class="n">ca</span> <span class="c"># central atom</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="o">.</span><span class="n">otherAtom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="o">.</span><span class="n">ca</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a3</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="n">otherAtom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="o">.</span><span class="n">ca</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a4</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b3</span><span class="o">.</span><span class="n">otherAtom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ba2</span><span class="o">.</span><span class="n">ca</span><span class="p">)</span>
+            <span class="c"># each improper dihedral will come in three versions;</span>
+            <span class="c"># identify an arbitrary unique one for constructing the list</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">normalized</span> <span class="o">=</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="p">)</span>\
+                              <span class="ow">and</span> <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span> <span class="o">&lt;</span> \
+                                  <span class="n">Utility</span><span class="o">.</span><span class="n">uniqueID</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b3</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="o">.</span><span class="n">otherBond</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b2</span> <span class="o">=</span> <span class="n">cb</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba2</span><span class="o">.</span><span class="n">otherBond</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="o">.</span><span class="n">otherAtom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="o">.</span><span class="n">ca</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba1</span><span class="o">.</span><span class="n">ca</span> <span class="c"># these two are</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ba2</span><span class="o">.</span><span class="n">ca</span> <span class="c">#   on the common bond</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a4</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b3</span><span class="o">.</span><span class="n">otherAtom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ba2</span><span class="o">.</span><span class="n">ca</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">normalized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">a4</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">improper</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&#39;ImproperDihedral(&#39;</span> <span class="o">+</span> <span class="sb">`self.a1`</span> <span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">+</span> <span class="sb">`self.a2`</span> <span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">+</span> \
+                   <span class="sb">`self.a3`</span> <span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">+</span> <span class="sb">`self.a4`</span> <span class="o">+</span><span class="s">&#39;)&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&#39;Dihedral(&#39;</span> <span class="o">+</span> <span class="sb">`self.a1`</span> <span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">+</span> <span class="sb">`self.a2`</span> <span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">+</span> \
+                   <span class="sb">`self.a3`</span> <span class="o">+</span><span class="s">&#39;,&#39;</span><span class="o">+</span> <span class="sb">`self.a4`</span> <span class="o">+</span><span class="s">&#39;)&#39;</span>
+
+<span class="c">#</span>
+<span class="c"># Bond lists</span>
+<span class="c">#</span>
+<span class="c"># Bond lists can create bond angle and dihedral angle lists</span>
+<span class="c"># for themselves. These are cached for efficiency. The cached</span>
+<span class="c"># copy is deleted whenever the bond list is modified.</span>
+<span class="c">#</span></div>
+<span class="k">class</span> <span class="nc">BondList</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initlist</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initlist</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+
+    <span class="n">__safe_for_unpickling__</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_clearCache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bond_angles</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dihedral_angles</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__getinitargs__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">None</span><span class="p">,)</span>
+
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__setslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">__setslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__delslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">__delslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clearCache</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">bondAngles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a list of all bond angles that can be formed from the</span>
+<span class="sd">                  bonds in the list</span>
+<span class="sd">        :rtype: :class:`~MMTK.Bonds.BondAngleList`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond_angles</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># find all atoms that are involved in more than one bond</span>
+            <span class="n">bonds</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">atom_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">bond</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">bl</span> <span class="o">=</span> <span class="n">bonds</span><span class="p">[</span><span class="n">bond</span><span class="o">.</span><span class="n">a1</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="n">bl</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="n">bonds</span><span class="p">[</span><span class="n">bond</span><span class="o">.</span><span class="n">a1</span><span class="p">]</span> <span class="o">=</span> <span class="n">bl</span>
+                    <span class="n">atom_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bond</span><span class="o">.</span><span class="n">a1</span><span class="p">)</span>
+                <span class="n">bl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bond</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">bl</span> <span class="o">=</span> <span class="n">bonds</span><span class="p">[</span><span class="n">bond</span><span class="o">.</span><span class="n">a2</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="n">bl</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="n">bonds</span><span class="p">[</span><span class="n">bond</span><span class="o">.</span><span class="n">a2</span><span class="p">]</span> <span class="o">=</span> <span class="n">bl</span>
+                    <span class="n">atom_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bond</span><span class="o">.</span><span class="n">a2</span><span class="p">)</span>
+                <span class="n">bl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bond</span><span class="p">)</span>
+            <span class="n">angles</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">atom_list</span><span class="p">:</span>
+                <span class="c"># each pair of bonds at the same atom defines a bond angle</span>
+                <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">Utility</span><span class="o">.</span><span class="n">pairs</span><span class="p">(</span><span class="n">bonds</span><span class="p">[</span><span class="n">atom</span><span class="p">]):</span>
+                    <span class="n">angles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">BondAngle</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">atom</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bond_angles</span> <span class="o">=</span> <span class="n">BondAngleList</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond_angles</span>
+
+    <span class="k">def</span> <span class="nf">dihedralAngles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a list of all dihedral angles that can be formed from the</span>
+<span class="sd">                  bonds in the list</span>
+<span class="sd">        :rtype: :class:`~MMTK.Bonds.DihedralAngleList`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dihedral_angles</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dihedral_angles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bondAngles</span><span class="p">()</span><span class="o">.</span><span class="n">dihedralAngles</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dihedral_angles</span>
+
+    <span class="k">def</span> <span class="nf">bondedTo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param atom: an atom</span>
+<span class="sd">        :type atom: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :returns: a list of all atoms to which the given atom is bound</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">b</span><span class="o">.</span><span class="n">otherAtom</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">hasAtom</span><span class="p">(</span><span class="n">atom</span><span class="p">)]</span>
+
+    <span class="k">def</span> <span class="nf">bondsOf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atom</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param atom: an atom</span>
+<span class="sd">        :type atom: :class:`~MMTK.ChemicalObjects.Atom`</span>
+<span class="sd">        :returns: a list of all bonds in which the given atom is involved</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">hasAtom</span><span class="p">(</span><span class="n">atom</span><span class="p">)]</span>
+
+    <span class="k">def</span> <span class="nf">setBondAttributes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create an attribute in all atoms of all bonds that points to the</span>
+<span class="sd">        bonded atom.</span>
+
+<span class="sd">        :note: Bond attributes are only set temporarily for optimization</span>
+<span class="sd">               purposes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="n">b</span><span class="o">.</span><span class="n">a1</span><span class="o">.</span><span class="n">setBondAttribute</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">a2</span><span class="p">)</span>
+            <span class="n">b</span><span class="o">.</span><span class="n">a2</span><span class="o">.</span><span class="n">setBondAttribute</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">a1</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Bond angle lists</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="BondAngleList"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.BondAngleList">[docs]</a><span class="k">class</span> <span class="nc">BondAngleList</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bond angle list</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angles</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">angles</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+<div class="viewcode-block" id="BondAngleList.dihedralAngles"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.BondAngleList.dihedralAngles">[docs]</a>    <span class="k">def</span> <span class="nf">dihedralAngles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: a list of all dihedral angles that can be formed from the</span>
+<span class="sd">                  bond angles in the list</span>
+<span class="sd">        :rtype: :class:`~MMTK.Bonds.DihedralAngleList`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># find all bonds that are involved in more than one bond angle</span>
+        <span class="n">angles</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">bond_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">angle</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">al</span> <span class="o">=</span> <span class="n">angles</span><span class="p">[</span><span class="n">angle</span><span class="o">.</span><span class="n">b1</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">al</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">angles</span><span class="p">[</span><span class="n">angle</span><span class="o">.</span><span class="n">b1</span><span class="p">]</span> <span class="o">=</span> <span class="n">al</span>
+                <span class="n">bond_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">angle</span><span class="o">.</span><span class="n">b1</span><span class="p">)</span>
+            <span class="n">al</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">al</span> <span class="o">=</span> <span class="n">angles</span><span class="p">[</span><span class="n">angle</span><span class="o">.</span><span class="n">b2</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">al</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">angles</span><span class="p">[</span><span class="n">angle</span><span class="o">.</span><span class="n">b2</span><span class="p">]</span> <span class="o">=</span> <span class="n">al</span>
+                <span class="n">bond_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">angle</span><span class="o">.</span><span class="n">b2</span><span class="p">)</span>
+            <span class="n">al</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+        <span class="n">dihedrals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">bond</span> <span class="ow">in</span> <span class="n">bond_list</span><span class="p">:</span>
+            <span class="c"># each pair of bond angles with a common bond defines a dihedral</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">Utility</span><span class="o">.</span><span class="n">pairs</span><span class="p">(</span><span class="n">angles</span><span class="p">[</span><span class="n">bond</span><span class="p">]):</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="n">DihedralAngle</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">bond</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">normalized</span><span class="p">:</span>
+                    <span class="n">dihedrals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">DihedralAngleList</span><span class="p">(</span><span class="n">dihedrals</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Dihedral angle lists</span>
+<span class="c">#</span></div></div>
+<div class="viewcode-block" id="DihedralAngleList"><a class="viewcode-back" href="../../modules.html#MMTK.Bonds.DihedralAngleList">[docs]</a><span class="k">class</span> <span class="nc">DihedralAngleList</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dihedral angle list</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dihedrals</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">dihedrals</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+<span class="c">#</span>
+<span class="c"># Dummy bond length database, for constraints without a force field</span>
+<span class="c">#</span></div>
+<span class="k">class</span> <span class="nc">DummyBondLengthDatabase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">bondLength</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bond</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">bondAngle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">None</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

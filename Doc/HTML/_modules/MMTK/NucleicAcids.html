@@ -1,0 +1,390 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.NucleicAcids &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.NucleicAcids</h1><div class="highlight"><pre>
+<span class="c"># This module implements classes for nucleotide chains.</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Nucleic acid chains</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">Biopolymers</span><span class="p">,</span> <span class="n">Bonds</span><span class="p">,</span> <span class="n">ChemicalObjects</span><span class="p">,</span> <span class="n">Collections</span><span class="p">,</span> \
+                 <span class="n">ConfigIO</span><span class="p">,</span> <span class="n">Database</span><span class="p">,</span> <span class="n">Universe</span><span class="p">,</span> <span class="n">Utility</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span>
+
+<span class="kn">from</span> <span class="nn">MMTK.Biopolymers</span> <span class="kn">import</span> <span class="n">defineNucleicAcidResidue</span>
+
+<span class="c">#</span>
+<span class="c"># Nucleotides are special groups</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="Nucleotide"><a class="viewcode-back" href="../../modules.html#MMTK.NucleicAcids.Nucleotide">[docs]</a><span class="k">class</span> <span class="nc">Nucleotide</span><span class="p">(</span><span class="n">Biopolymers</span><span class="o">.</span><span class="n">Residue</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Nucleic acid residue</span>
+
+<span class="sd">    Nucleotides are a special kind of group. Like any other</span>
+<span class="sd">    group, they are defined in the chemical database. Each residue</span>
+<span class="sd">    has two or three subgroups (&#39;sugar&#39; and &#39;base&#39;, plus &#39;phosphate&#39;</span>
+<span class="sd">    except for 5&#39;-terminal residues) and is usually</span>
+<span class="sd">    connected to other residues to form a nucleotide chain. The database</span>
+<span class="sd">    contains three variants of each residue (5&#39;-terminal, 3&#39;-terminal,</span>
+<span class="sd">    non-terminal).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="s">&#39;all&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param name: the name of the nucleotide in the chemical database. This</span>
+<span class="sd">                     is the full name of the residue plus the suffix</span>
+<span class="sd">                     &quot;_5ter&quot; or &quot;_3ter&quot; for the terminal variants.</span>
+<span class="sd">        :type name: str</span>
+<span class="sd">        :param model: one of &quot;all&quot; (all-atom), &quot;none&quot; (no hydrogens),</span>
+<span class="sd">                      &quot;polar&quot; (united-atom with only polar hydrogens),</span>
+<span class="sd">                      &quot;polar_charmm&quot; (like &quot;polar&quot;, but defining</span>
+<span class="sd">                      polar hydrogens like in the CHARMM force field).</span>
+<span class="sd">                      Currently the database has definitions only for &quot;all&quot;.</span>
+<span class="sd">        :type model: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+	    <span class="n">blueprint</span> <span class="o">=</span> <span class="n">_residueBlueprint</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+	    <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Group</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blueprint</span><span class="p">)</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">_init</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Nucleotide.backbone"><a class="viewcode-back" href="../../modules.html#MMTK.NucleicAcids.Nucleotide.backbone">[docs]</a>    <span class="k">def</span> <span class="nf">backbone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the sugar and phosphate groups</span>
+<span class="sd">        :rtype: :class:`~MMTK.ChemicalObjects.Group`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sugar</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;phosphate&#39;</span><span class="p">):</span>
+            <span class="n">bb</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="n">Collection</span><span class="p">([</span><span class="n">bb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">phosphate</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">bb</span>
+</div>
+<div class="viewcode-block" id="Nucleotide.bases"><a class="viewcode-back" href="../../modules.html#MMTK.NucleicAcids.Nucleotide.bases">[docs]</a>    <span class="k">def</span> <span class="nf">bases</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the base group</span>
+<span class="sd">        :rtype: :class:`~MMTK.ChemicalObjects.Group`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span>
+
+</div></div>
+<span class="k">def</span> <span class="nf">_residueBlueprint</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+	<span class="n">blueprint</span> <span class="o">=</span> <span class="n">_residue_blueprints</span><span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="n">model</span><span class="p">)]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+	<span class="k">if</span> <span class="n">model</span> <span class="o">==</span> <span class="s">&#39;polar&#39;</span><span class="p">:</span>
+	    <span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&#39;_uni&#39;</span>
+	<span class="k">elif</span> <span class="n">model</span> <span class="o">==</span> <span class="s">&#39;polar_charmm&#39;</span><span class="p">:</span>
+	    <span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&#39;_uni2&#39;</span>
+	<span class="k">elif</span> <span class="n">model</span> <span class="o">==</span> <span class="s">&#39;none&#39;</span><span class="p">:</span>
+	    <span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&#39;_noh&#39;</span>
+	<span class="n">blueprint</span> <span class="o">=</span> <span class="n">Database</span><span class="o">.</span><span class="n">BlueprintGroup</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+	<span class="n">_residue_blueprints</span><span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="n">model</span><span class="p">)]</span> <span class="o">=</span> <span class="n">blueprint</span>
+    <span class="k">return</span> <span class="n">blueprint</span>
+
+<span class="n">_residue_blueprints</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c">#</span>
+<span class="c"># Nucleotide chains are molecules with added features.</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="NucleotideChain"><a class="viewcode-back" href="../../modules.html#MMTK.NucleicAcids.NucleotideChain">[docs]</a><span class="k">class</span> <span class="nc">NucleotideChain</span><span class="p">(</span><span class="n">Biopolymers</span><span class="o">.</span><span class="n">ResidueChain</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Nucleotide chain</span>
+
+<span class="sd">    Nucleotide chains consist of nucleotides that are linked together.</span>
+<span class="sd">    They are a special kind of molecule, i.e. all molecule operations</span>
+<span class="sd">    are available.</span>
+
+<span class="sd">    Nucleotide chains act as sequences of residues. If n is a NucleotideChain</span>
+<span class="sd">    object, then</span>
+
+<span class="sd">     * len(n) yields the number of nucleotides</span>
+
+<span class="sd">     * n[i] yields nucleotide number i</span>
+
+<span class="sd">     * n[i:j] yields the subchain from nucleotide number i up to but</span>
+<span class="sd">                 excluding nucleotide number j</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sequence</span><span class="p">,</span> <span class="o">**</span><span class="n">properties</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param sequence: the nucleotide sequence. This can be a string</span>
+<span class="sd">                         containing the one-letter codes, or a list</span>
+<span class="sd">                         of two-letter codes (a &quot;d&quot; or &quot;r&quot; for the type of</span>
+<span class="sd">                         sugar, and the one-letter base code), or a</span>
+<span class="sd">                         :class:`~MMTK.PDB.PDBNucleotideChain` object.</span>
+<span class="sd">                         If a PDBNucleotideChain object is supplied, the</span>
+<span class="sd">                         atomic positions it contains are assigned to the</span>
+<span class="sd">                         atoms of the newly generated nucleotide chain,</span>
+<span class="sd">                         otherwise the positions of all atoms are undefined.</span>
+<span class="sd">        :keyword model: one of &quot;all&quot; (all-atom), &quot;no_hydrogens&quot; or &quot;none&quot;</span>
+<span class="sd">                        (no hydrogens), &quot;polar_hydrogens&quot; or &quot;polar&quot;</span>
+<span class="sd">                        (united-atom with only polar hydrogens),</span>
+<span class="sd">                        &quot;polar_charmm&quot; (like &quot;polar&quot;, but defining</span>
+<span class="sd">                        polar hydrogens like in the CHARMM force field),</span>
+<span class="sd">                        &quot;polar_opls&quot; (like &quot;polar&quot;, but defining</span>
+<span class="sd">                        polar hydrogens like in the latest OPLS force field).</span>
+<span class="sd">                        Default is &quot;all&quot;. Currently the database contains</span>
+<span class="sd">                        definitions only for &quot;all&quot;.</span>
+<span class="sd">        :type model: str</span>
+<span class="sd">        :keyword terminus_5: if True, the first residue is constructed</span>
+<span class="sd">                             using the 5&#39;-terminal variant, if False the</span>
+<span class="sd">                             non-terminal version is used. Default is True.</span>
+<span class="sd">        :type terminus_5: bool</span>
+<span class="sd">        :keyword terminus_3: if True, the last residue is constructed</span>
+<span class="sd">                             using the 3&#39;-terminal variant, if False the</span>
+<span class="sd">                             non-terminal version is used. Default is True.</span>
+<span class="sd">        :type terminus_3: bool</span>
+<span class="sd">        :keyword circular: if True, a bond is constructed</span>
+<span class="sd">                           between the first and the last residue.</span>
+<span class="sd">                           Default is False.</span>
+<span class="sd">        :type circular: bool</span>
+<span class="sd">        :keyword name: a name for the chain (a string)</span>
+<span class="sd">        :type name: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="k">if</span> <span class="n">sequence</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+	    <span class="n">hydrogens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">binaryProperty</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="s">&#39;hydrogens&#39;</span><span class="p">,</span> <span class="s">&#39;all&#39;</span><span class="p">)</span>
+	    <span class="k">if</span> <span class="n">hydrogens</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+		<span class="n">hydrogens</span> <span class="o">=</span> <span class="s">&#39;all&#39;</span>
+	    <span class="k">elif</span> <span class="n">hydrogens</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+		<span class="n">hydrogens</span> <span class="o">=</span> <span class="s">&#39;none&#39;</span>
+	    <span class="n">term5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">binaryProperty</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="s">&#39;terminus_5&#39;</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+	    <span class="n">term3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">binaryProperty</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="s">&#39;terminus_3&#39;</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+	    <span class="n">circular</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">binaryProperty</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="s">&#39;circular&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+	    <span class="k">try</span><span class="p">:</span>
+		<span class="n">model</span> <span class="o">=</span> <span class="n">properties</span><span class="p">[</span><span class="s">&#39;model&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+	    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+		<span class="n">model</span> <span class="o">=</span> <span class="n">hydrogens</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">version_spec</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;hydrogens&#39;</span><span class="p">:</span> <span class="n">hydrogens</span><span class="p">,</span>
+				 <span class="s">&#39;terminus_5&#39;</span><span class="p">:</span> <span class="n">term5</span><span class="p">,</span>
+				 <span class="s">&#39;terminus_3&#39;</span><span class="p">:</span> <span class="n">term3</span><span class="p">,</span>
+				 <span class="s">&#39;model&#39;</span><span class="p">:</span> <span class="n">model</span><span class="p">,</span>
+                                 <span class="s">&#39;circular&#39;</span><span class="p">:</span> <span class="n">circular</span><span class="p">}</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sequence</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">basestring</span><span class="p">):</span>
+		<span class="n">conf</span> <span class="o">=</span> <span class="bp">None</span>
+	    <span class="k">else</span><span class="p">:</span>
+		<span class="n">conf</span> <span class="o">=</span> <span class="n">sequence</span>
+		<span class="n">sequence</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">sequence</span><span class="p">]</span>
+	    <span class="n">sequence</span> <span class="o">=</span> <span class="p">[</span><span class="n">Biopolymers</span><span class="o">.</span><span class="n">_fullName</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">sequence</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">term5</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">sequence</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;5ter&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">sequence</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="s">&#39;_5ter&#39;</span>
+            <span class="k">if</span> <span class="n">term3</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">sequence</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;3ter&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">sequence</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="s">&#39;_3ter&#39;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="n">sequence</span><span class="p">:</span>
+                <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">Nucleotide</span><span class="p">(</span><span class="n">residue</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+                <span class="n">r</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">symbol</span> <span class="o">+</span> <span class="s">&#39;_&#39;</span> <span class="o">+</span> <span class="sb">`n`</span>
+                <span class="n">r</span><span class="o">.</span><span class="n">sequence_number</span> <span class="o">=</span> <span class="n">n</span>
+                <span class="n">r</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="bp">self</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_setupChain</span><span class="p">(</span><span class="n">circular</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
+
+    <span class="n">is_nucleotide_chain</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">__getslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">last</span><span class="p">):</span>
+	<span class="k">return</span> <span class="n">NucleotideSubChain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">first</span><span class="p">:</span><span class="n">last</span><span class="p">])</span>
+
+<div class="viewcode-block" id="NucleotideChain.backbone"><a class="viewcode-back" href="../../modules.html#MMTK.NucleicAcids.NucleotideChain.backbone">[docs]</a>    <span class="k">def</span> <span class="nf">backbone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the sugar and phosphate groups of all nucleotides</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bb</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="n">Collection</span><span class="p">([])</span>
+        <span class="k">for</span> <span class="n">residue</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">bb</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">residue</span><span class="o">.</span><span class="n">phosphate</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="n">bb</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">residue</span><span class="o">.</span><span class="n">sugar</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">bb</span>
+</div>
+<div class="viewcode-block" id="NucleotideChain.bases"><a class="viewcode-back" href="../../modules.html#MMTK.NucleicAcids.NucleotideChain.bases">[docs]</a>    <span class="k">def</span> <span class="nf">bases</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :returns: the base groups of all nucleotides</span>
+<span class="sd">        :rtype: :class:`~MMTK.Collections.Collection`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+	<span class="k">return</span> <span class="n">Collections</span><span class="o">.</span><span class="n">Collection</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">base</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">])</span>
+</div>
+    <span class="k">def</span> <span class="nf">_descriptionSpec</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">name</span> <span class="o">+</span> <span class="s">&#39;=&#39;</span> <span class="o">+</span> <span class="sb">`self.version_spec[name]`</span>
+                           <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">version_spec</span><span class="o">.</span><span class="n">keys</span><span class="p">())])</span>
+	<span class="k">return</span> <span class="s">&quot;N&quot;</span><span class="p">,</span> <span class="n">kwargs</span>
+
+    <span class="k">def</span> <span class="nf">_typeName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence</span><span class="p">()])</span>
+
+    <span class="k">def</span> <span class="nf">_graphics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">distance_fn</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+	<span class="k">if</span> <span class="n">model</span> <span class="o">!=</span> <span class="s">&#39;backbone&#39;</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Molecule</span><span class="o">.</span><span class="n">_graphics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span>
+						      <span class="n">distance_fn</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+						      <span class="n">module</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+	<span class="n">color</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;color&#39;</span><span class="p">,</span> <span class="s">&#39;black&#39;</span><span class="p">)</span>
+	<span class="n">material</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">EmissiveMaterial</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
+	<span class="n">objects</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+	    <span class="n">a1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">phosphate</span><span class="o">.</span><span class="n">P</span>
+	    <span class="n">a2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">phosphate</span><span class="o">.</span><span class="n">P</span>
+	    <span class="n">p1</span> <span class="o">=</span> <span class="n">a1</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+	    <span class="n">p2</span> <span class="o">=</span> <span class="n">a2</span><span class="o">.</span><span class="n">position</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+	    <span class="k">if</span> <span class="n">p1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">p2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="n">bond_vector</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">distance_fn</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
+		<span class="n">cut</span> <span class="o">=</span> <span class="n">bond_vector</span> <span class="o">!=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">p2</span><span class="o">-</span><span class="n">p1</span><span class="p">)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">cut</span><span class="p">:</span>
+		    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">material</span> <span class="o">=</span> <span class="n">material</span><span class="p">))</span>
+		<span class="k">else</span><span class="p">:</span>
+		    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p1</span><span class="o">+</span><span class="n">bond_vector</span><span class="p">,</span>
+					       <span class="n">material</span> <span class="o">=</span> <span class="n">material</span><span class="p">))</span>
+		    <span class="n">objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">Line</span><span class="p">(</span><span class="n">p2</span><span class="p">,</span> <span class="n">p2</span><span class="o">-</span><span class="n">bond_vector</span><span class="p">,</span>
+					       <span class="n">material</span> <span class="o">=</span> <span class="n">material</span><span class="p">))</span>
+	<span class="k">return</span> <span class="n">objects</span>
+
+<span class="c">#</span>
+<span class="c"># Subchains are created by slicing chains or extracting a chain from</span>
+<span class="c"># a group of connected chains.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="NucleotideSubChain"><a class="viewcode-back" href="../../modules.html#MMTK.NucleicAcids.NucleotideSubChain">[docs]</a><span class="k">class</span> <span class="nc">NucleotideSubChain</span><span class="p">(</span><span class="n">NucleotideChain</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A contiguous part of a nucleotide chain</span>
+
+<span class="sd">    NucleotideSubChain objects are the result of slicing operations on</span>
+<span class="sd">    NucleotideChain objects. They cannot be created directly.</span>
+<span class="sd">    NucleotideSubChain objects permit all operations of NucleotideChain</span>
+<span class="sd">    objects, but cannot be added to a universe.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chain</span><span class="p">,</span> <span class="n">groups</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="p">):</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">atoms</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">bonds</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span> <span class="o">+</span> <span class="n">g</span><span class="o">.</span><span class="n">atoms</span>
+	    <span class="bp">self</span><span class="o">.</span><span class="n">bonds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bonds</span> <span class="o">+</span> <span class="n">g</span><span class="o">.</span><span class="n">bonds</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bonds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Bonds</span><span class="o">.</span><span class="n">Bond</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">sugar</span><span class="o">.</span><span class="n">O_3</span><span class="p">,</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">phosphate</span><span class="o">.</span><span class="n">P</span><span class="p">)))</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">bonds</span> <span class="o">=</span> <span class="n">Bonds</span><span class="o">.</span><span class="n">BondList</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bonds</span><span class="p">)</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">chain</span><span class="o">.</span><span class="n">parent</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="bp">None</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">configurations</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">part_of</span> <span class="o">=</span> <span class="n">chain</span>
+
+    <span class="n">is_incomplete</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+	<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="s">&#39;SubChain of &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">part_of</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+	    <span class="k">return</span> <span class="n">ChemicalObjects</span><span class="o">.</span><span class="n">Molecule</span><span class="o">.</span><span class="n">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+
+<span class="c">#</span>
+<span class="c"># Type check functions</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="isNucleotideChain"><a class="viewcode-back" href="../../modules.html#MMTK.NucleicAcids.isNucleotideChain">[docs]</a><span class="k">def</span> <span class="nf">isNucleotideChain</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="s">&quot;Returns True if x is a NucleotideChain.&quot;</span>
+    <span class="k">return</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s">&#39;is_nucleotide_chain&#39;</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,202 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.XML &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.XML</h1><div class="highlight"><pre>
+<span class="c"># XML I/O</span>
+<span class="c">#</span>
+<span class="c"># Written by Konrad Hinsen</span>
+<span class="c">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">XML format for describing molecular systems</span>
+
+<span class="sd">Note: this format is not used by any other program at the moment. It should</span>
+<span class="sd">be considered experimental and subject to change.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">import</span> <span class="nn">MMTK</span>
+<span class="kn">from</span> <span class="nn">MMTK.MoleculeFactory</span> <span class="kn">import</span> <span class="n">MoleculeFactory</span>
+<span class="kn">from</span> <span class="nn">xml.etree.ElementTree</span> <span class="kn">import</span> <span class="n">iterparse</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+
+
+<div class="viewcode-block" id="XMLMoleculeFactory"><a class="viewcode-back" href="../../modules.html#MMTK.XML.XMLMoleculeFactory">[docs]</a><span class="k">class</span> <span class="nc">XMLMoleculeFactory</span><span class="p">(</span><span class="n">MoleculeFactory</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    XML molecule factory</span>
+<span class="sd">    </span>
+<span class="sd">    An XML molecule factory reads an XML specification of a molecular</span>
+<span class="sd">    system and builds the molecule objects and universe described</span>
+<span class="sd">    therein. The universe can be obtained through the attribute</span>
+<span class="sd">    *universe*.</span>
+<span class="sd">    </span>
+<span class="sd">    :param file: the name of an XML file, or a file object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">file</span><span class="p">):</span>
+        <span class="n">MoleculeFactory</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">event</span><span class="p">,</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">iterparse</span><span class="p">(</span><span class="nb">file</span><span class="p">):</span>
+            <span class="n">tag</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">tag</span>
+            <span class="n">ob_id</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tag</span> <span class="o">==</span> <span class="s">&#39;molecule&#39;</span> <span class="ow">and</span> <span class="n">ob_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">makeGroup</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+                <span class="n">element</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">tag</span> <span class="o">==</span> <span class="s">&#39;templates&#39;</span><span class="p">:</span>
+                <span class="n">element</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">tag</span> <span class="o">==</span> <span class="s">&#39;universe&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">makeUniverse</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">makeGroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element</span><span class="p">):</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;id&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">createGroup</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">molecule_element</span> <span class="ow">in</span> <span class="n">element</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&#39;molecule&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addSubgroup</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">molecule_element</span><span class="o">.</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;title&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span>
+                             <span class="n">molecule_element</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;ref&#39;</span><span class="p">])</span>
+        <span class="n">atom_array</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;atomArray&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">atom_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">atom_element</span> <span class="ow">in</span> <span class="n">atom_array</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">addAtom</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">atom_element</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;title&#39;</span><span class="p">],</span>
+                             <span class="n">atom_element</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;elementType&#39;</span><span class="p">])</span>
+        <span class="n">bond_array</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;bondArray&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bond_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">bond_element</span> <span class="ow">in</span> <span class="n">bond_array</span><span class="p">:</span>
+                <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span> <span class="o">=</span> <span class="n">bond_element</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;atomRefs2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                <span class="n">atom1</span> <span class="o">=</span> <span class="s">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">atom1</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">))</span>
+                <span class="n">atom2</span> <span class="o">=</span> <span class="s">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">atom2</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">addBond</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">atom1</span><span class="p">,</span> <span class="n">atom2</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">makeUniverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element</span><span class="p">):</span>
+        <span class="n">topology</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;topology&#39;</span><span class="p">,</span> <span class="s">&#39;infinite&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s">&#39;infinite&#39;</span><span class="p">:</span>
+            <span class="n">universe</span> <span class="o">=</span> <span class="n">MMTK</span><span class="o">.</span><span class="n">InfiniteUniverse</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">topology</span> <span class="o">==</span> <span class="s">&#39;periodic3d&#39;</span><span class="p">:</span>
+            <span class="n">cellshape</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;cellshape&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">cellshape</span> <span class="o">==</span> <span class="s">&#39;orthorhombic&#39;</span><span class="p">:</span>
+                <span class="n">cellsize</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;cellsize&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                <span class="n">units</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;units&#39;</span><span class="p">,</span> <span class="s">&#39;units:nm&#39;</span><span class="p">)</span>
+                <span class="n">factor</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">MMTK</span><span class="o">.</span><span class="n">Units</span><span class="p">,</span> <span class="n">units</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">universe</span> <span class="o">=</span> <span class="n">MMTK</span><span class="o">.</span><span class="n">OrthorhombicPeriodicUniverse</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span>
+                                     <span class="p">[</span><span class="n">factor</span><span class="o">*</span><span class="nb">float</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="k">for</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">cellsize</span><span class="p">]))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;cell shape </span><span class="si">%s</span><span class="s"> not implemented&quot;</span> <span class="o">%</span> <span class="n">cellshape</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;topology </span><span class="si">%s</span><span class="s"> not implemented&quot;</span> <span class="o">%</span> <span class="n">topology</span><span class="p">)</span>
+        <span class="n">atom_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">subelement</span> <span class="ow">in</span> <span class="n">element</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">subelement</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s">&#39;molecule&#39;</span><span class="p">:</span>
+                <span class="n">molecule</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retrieveMolecule</span><span class="p">(</span><span class="n">subelement</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;ref&#39;</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">molecule</span><span class="o">.</span><span class="n">atomList</span><span class="p">():</span>
+                    <span class="n">atom</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">atom_index</span>
+                    <span class="n">atom_index</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">universe</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">molecule</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">subelement</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s">&#39;atom&#39;</span><span class="p">:</span>
+                <span class="n">atom</span> <span class="o">=</span> <span class="n">MMTK</span><span class="o">.</span><span class="n">Atom</span><span class="p">(</span><span class="n">subelement</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;elementType&#39;</span><span class="p">])</span>
+                <span class="n">atom</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">atom_index</span>
+                <span class="n">atom_index</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">universe</span><span class="o">.</span><span class="n">addObject</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span>
+        <span class="n">configuration</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;configuration&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">configuration</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">configuration</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;atomArray&#39;</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">array</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;x3&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">array</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;y3&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">array</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s">&#39;z3&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+            <span class="n">units</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;units&#39;</span><span class="p">,</span> <span class="s">&#39;units:nm&#39;</span><span class="p">)</span>
+            <span class="n">factor</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">MMTK</span><span class="o">.</span><span class="n">Units</span><span class="p">,</span> <span class="n">units</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">universe</span><span class="o">.</span><span class="n">configuration</span><span class="p">()</span><span class="o">.</span><span class="n">array</span>
+            <span class="n">array</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span>
+            <span class="n">array</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span>
+            <span class="n">array</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">z</span>
+            <span class="n">N</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">array</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">universe</span> <span class="o">=</span> <span class="n">universe</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

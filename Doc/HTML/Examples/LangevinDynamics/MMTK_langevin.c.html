@@ -1,0 +1,1031 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>An integrator for Langevin dynamics (C part) &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="an-integrator-for-langevin-dynamics-c-part">
+<h1>An integrator for Langevin dynamics (C part)<a class="headerlink" href="#an-integrator-for-langevin-dynamics-c-part" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-c"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+ 21
+ 22
+ 23
+ 24
+ 25
+ 26
+ 27
+ 28
+ 29
+ 30
+ 31
+ 32
+ 33
+ 34
+ 35
+ 36
+ 37
+ 38
+ 39
+ 40
+ 41
+ 42
+ 43
+ 44
+ 45
+ 46
+ 47
+ 48
+ 49
+ 50
+ 51
+ 52
+ 53
+ 54
+ 55
+ 56
+ 57
+ 58
+ 59
+ 60
+ 61
+ 62
+ 63
+ 64
+ 65
+ 66
+ 67
+ 68
+ 69
+ 70
+ 71
+ 72
+ 73
+ 74
+ 75
+ 76
+ 77
+ 78
+ 79
+ 80
+ 81
+ 82
+ 83
+ 84
+ 85
+ 86
+ 87
+ 88
+ 89
+ 90
+ 91
+ 92
+ 93
+ 94
+ 95
+ 96
+ 97
+ 98
+ 99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466</pre></div></td><td class="code"><div class="highlight"><pre><span class="cm">/* Low-level Langevin dynamics integrators</span>
+<span class="cm"> *</span>
+<span class="cm"> * Written by Konrad Hinsen</span>
+<span class="cm"> */</span>
+
+<span class="cp">#include &quot;MMTK/universe.h&quot;</span>
+<span class="cp">#include &quot;MMTK/forcefield.h&quot;</span>
+<span class="cp">#include &quot;MMTK/trajectory.h&quot;</span>
+
+<span class="cp">#include &quot;ranf.h&quot;</span>
+
+<span class="cm">/* Global variables */</span>
+
+<span class="kt">double</span> <span class="n">kB</span><span class="p">;</span>   <span class="cm">/* Boltzman constant */</span>
+
+<span class="cm">/* Allocate and initialize Output variable descriptors */</span>
+
+<span class="k">static</span> <span class="n">PyTrajectoryVariable</span> <span class="o">*</span>
+<span class="nf">get_data_descriptors</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="n">PyUniverseSpecObject</span> <span class="o">*</span><span class="n">universe_spec</span><span class="p">,</span>
+		     <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">configuration</span><span class="p">,</span> <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">velocities</span><span class="p">,</span>
+		     <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">gradients</span><span class="p">,</span> <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">masses</span><span class="p">,</span>
+		     <span class="kt">int</span> <span class="o">*</span><span class="n">ndf</span><span class="p">,</span> <span class="kt">double</span> <span class="o">*</span><span class="n">time</span><span class="p">,</span>
+		     <span class="kt">double</span> <span class="o">*</span><span class="n">p_energy</span><span class="p">,</span> <span class="kt">double</span> <span class="o">*</span><span class="n">k_energy</span><span class="p">,</span>
+		     <span class="kt">double</span> <span class="o">*</span><span class="n">temperature</span><span class="p">,</span> <span class="kt">double</span> <span class="o">*</span><span class="n">pressure</span><span class="p">,</span>
+		     <span class="kt">double</span> <span class="o">*</span><span class="n">box_size</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">PyTrajectoryVariable</span> <span class="o">*</span><span class="n">vars</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyTrajectoryVariable</span> <span class="o">*</span><span class="p">)</span>
+                               <span class="n">malloc</span><span class="p">((</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="n">PyTrajectoryVariable</span><span class="p">));</span>
+  <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">vars</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">time</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;time&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Time: %lf</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">time_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_Scalar</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Time</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">dp</span> <span class="o">=</span> <span class="n">time</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">p_energy</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;potential_energy&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Potential energy: %lf, &quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">energy_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_Scalar</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Energy</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">dp</span> <span class="o">=</span> <span class="n">p_energy</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">k_energy</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;kinetic_energy&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Kinetic energy: %lf</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">energy_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_Scalar</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Energy</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">dp</span> <span class="o">=</span> <span class="n">k_energy</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">temperature</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;temperature&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Temperature: %lf</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">temperature_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_Scalar</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Thermodynamic</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">dp</span> <span class="o">=</span> <span class="n">temperature</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pressure</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;pressure&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Pressure: %lf</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">pressure_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_Scalar</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Thermodynamic</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">dp</span> <span class="o">=</span> <span class="n">pressure</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">configuration</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;configuration&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Configuration:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">length_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_ParticleVector</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Configuration</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">configuration</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">box_size</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;box_size&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Box size:&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">length_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_BoxSize</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Configuration</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">dp</span> <span class="o">=</span> <span class="n">box_size</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">length</span> <span class="o">=</span> <span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">geometry_data_length</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+  <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">velocities</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;velocities&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Velocities:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">velocity_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_ParticleVector</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Velocities</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">velocities</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">gradients</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;gradients&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Energy gradients:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">energy_gradient_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_ParticleVector</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Gradients</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">gradients</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">masses</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;masses&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Masses:</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="n">mass_unit_name</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_ParticleScalar</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Internal</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">array</span> <span class="o">=</span> <span class="n">masses</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ndf</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="o">&amp;&amp;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;degrees_of_freedom&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Degrees of freedom: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">unit</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">type</span> <span class="o">=</span> <span class="n">PyTrajectory_IntScalar</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">class</span> <span class="o">=</span> <span class="n">PyTrajectory_Internal</span><span class="p">;</span>
+      <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">value</span><span class="p">.</span><span class="n">ip</span> <span class="o">=</span> <span class="n">ndf</span><span class="p">;</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">vars</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">name</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">vars</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* Generate random numbers with bivariate gaussian distribution */</span>
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">gaussian_bivariate</span><span class="p">(</span><span class="kt">double</span> <span class="o">*</span><span class="n">r1</span><span class="p">,</span> <span class="kt">double</span> <span class="o">*</span><span class="n">r2</span><span class="p">,</span>
+		   <span class="kt">double</span> <span class="n">s1</span><span class="p">,</span> <span class="kt">double</span> <span class="n">s2</span><span class="p">,</span> <span class="kt">double</span> <span class="n">c12</span><span class="p">,</span> <span class="kt">double</span> <span class="n">c12x</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">double</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">s</span><span class="p">;</span>
+  <span class="k">do</span> <span class="p">{</span>
+    <span class="n">v1</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">Ranf</span><span class="p">()</span><span class="o">-</span><span class="mf">1.</span><span class="p">;</span>
+    <span class="n">v2</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">Ranf</span><span class="p">()</span><span class="o">-</span><span class="mf">1.</span><span class="p">;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">v1</span><span class="o">*</span><span class="n">v1</span> <span class="o">+</span> <span class="n">v2</span><span class="o">*</span><span class="n">v2</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">s</span> <span class="o">&gt;=</span> <span class="mf">1.</span> <span class="o">||</span> <span class="n">s</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">);</span>
+  <span class="n">s</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="o">-</span><span class="mf">2.</span><span class="o">*</span><span class="n">log</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">/</span><span class="n">s</span><span class="p">);</span>
+  <span class="n">v1</span> <span class="o">*=</span> <span class="n">s</span><span class="p">;</span>
+  <span class="n">v2</span> <span class="o">*=</span> <span class="n">s</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">r1</span> <span class="o">=</span> <span class="n">s1</span><span class="o">*</span><span class="n">v1</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">r2</span> <span class="o">=</span> <span class="n">s2</span><span class="o">*</span><span class="p">(</span><span class="n">c12</span><span class="o">*</span><span class="n">v1</span><span class="o">+</span><span class="n">c12x</span><span class="o">*</span><span class="n">v2</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="cm">/* Generate random forces */</span>
+<span class="k">static</span> <span class="kt">void</span>
+<span class="nf">random_forces</span><span class="p">(</span><span class="n">vector3</span> <span class="o">*</span><span class="n">rx</span><span class="p">,</span> <span class="n">vector3</span> <span class="o">*</span><span class="n">rv</span><span class="p">,</span> <span class="kt">double</span> <span class="o">*</span><span class="n">friction</span><span class="p">,</span> <span class="kt">double</span> <span class="o">*</span><span class="n">mass</span><span class="p">,</span>
+	      <span class="kt">int</span> <span class="n">atoms</span><span class="p">,</span> <span class="kt">double</span> <span class="n">temperature</span><span class="p">,</span> <span class="kt">double</span> <span class="n">delta_t</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">atoms</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">friction</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">1.e-8</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">rx</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">rx</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">rx</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">;</span>
+      <span class="n">rv</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">rv</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">rv</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span> <span class="p">{</span>
+      <span class="kt">double</span> <span class="n">ft</span> <span class="o">=</span> <span class="n">delta_t</span><span class="o">*</span><span class="n">friction</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">mass</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+      <span class="kt">double</span> <span class="n">expft</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">ft</span><span class="p">);</span>
+      <span class="kt">double</span> <span class="n">ktm</span> <span class="o">=</span> <span class="n">kB</span><span class="o">*</span><span class="n">temperature</span><span class="o">/</span><span class="n">mass</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+      <span class="kt">double</span> <span class="n">s1</span> <span class="o">=</span> <span class="n">delta_t</span><span class="o">*</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ktm</span><span class="o">*</span><span class="p">(</span><span class="mf">2.</span><span class="o">-</span><span class="p">(</span><span class="mf">3.</span><span class="o">+</span><span class="p">(</span><span class="n">expft</span><span class="o">-</span><span class="mf">4.</span><span class="p">)</span><span class="o">*</span><span class="n">expft</span><span class="p">)</span><span class="o">/</span><span class="n">ft</span><span class="p">)</span><span class="o">/</span><span class="n">ft</span><span class="p">);</span>
+      <span class="kt">double</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">ktm</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">sqr</span><span class="p">(</span><span class="n">expft</span><span class="p">)));</span>
+      <span class="kt">double</span> <span class="n">c12</span> <span class="o">=</span> <span class="n">delta_t</span><span class="o">*</span><span class="n">ktm</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">expft</span><span class="o">*</span><span class="p">(</span><span class="n">expft</span><span class="o">-</span><span class="mf">2.</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">ft</span><span class="o">*</span><span class="n">s1</span><span class="o">*</span><span class="n">s2</span><span class="p">);</span>
+      <span class="kt">double</span> <span class="n">c12x</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">c12</span><span class="o">*</span><span class="n">c12</span><span class="p">);</span>
+      <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span>
+	<span class="n">gaussian_bivariate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rx</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">],</span> <span class="o">&amp;</span><span class="n">rv</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">],</span> <span class="n">s1</span><span class="p">,</span> <span class="n">s2</span><span class="p">,</span> <span class="n">c12</span><span class="p">,</span> <span class="n">c12x</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="cm">/* Langevin dynamics integrator */</span>
+
+<span class="k">static</span> <span class="n">PyObject</span> <span class="o">*</span>
+<span class="nf">integrateLD</span><span class="p">(</span><span class="n">PyObject</span> <span class="o">*</span><span class="n">dummy</span><span class="p">,</span> <span class="n">PyObject</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="cm">/* The parameters passed from the Python code */</span>
+  <span class="n">PyObject</span> <span class="o">*</span><span class="n">universe</span><span class="p">;</span>                <span class="cm">/* universe */</span>
+  <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">configuration</span><span class="p">;</span>      <span class="cm">/* array of positions */</span>
+  <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">velocities</span><span class="p">;</span>         <span class="cm">/* array of velocities */</span>
+  <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">masses</span><span class="p">;</span>             <span class="cm">/* array of masses */</span>
+  <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">friction</span><span class="p">;</span>           <span class="cm">/* array of friction coefficients */</span>
+  <span class="n">PyListObject</span> <span class="o">*</span><span class="n">spec_list</span><span class="p">;</span>           <span class="cm">/* list of periodic actions */</span>
+  <span class="n">PyFFEvaluatorObject</span> <span class="o">*</span><span class="n">evaluator</span><span class="p">;</span>    <span class="cm">/* energy evaluator */</span>
+  <span class="kt">double</span> <span class="n">ext_temp</span><span class="p">;</span>                   <span class="cm">/* temperature of the heat bath */</span>
+  <span class="kt">double</span> <span class="n">delta_t</span><span class="p">;</span>                    <span class="cm">/* time step */</span>
+  <span class="kt">int</span> <span class="n">steps</span><span class="p">;</span>                         <span class="cm">/* number of steps */</span>
+
+  <span class="cm">/* Other variables, see below for explanations */</span>
+  <span class="n">PyThreadState</span> <span class="o">*</span><span class="n">this_thread</span><span class="p">;</span>
+  <span class="n">PyUniverseSpecObject</span> <span class="o">*</span><span class="n">universe_spec</span><span class="p">;</span>
+  <span class="n">PyArrayObject</span> <span class="o">*</span><span class="n">gradients</span><span class="p">,</span> <span class="o">*</span><span class="n">random1</span><span class="p">,</span> <span class="o">*</span><span class="n">random2</span><span class="p">;</span>
+  <span class="n">PyTrajectoryOutputSpec</span> <span class="o">*</span><span class="n">output</span><span class="p">;</span>
+  <span class="n">PyTrajectoryVariable</span> <span class="o">*</span><span class="n">data_descriptors</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">vector3</span> <span class="o">*</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">v</span><span class="p">,</span> <span class="o">*</span><span class="n">g</span><span class="p">,</span> <span class="o">*</span><span class="n">rx</span><span class="p">,</span> <span class="o">*</span><span class="n">rv</span><span class="p">;</span>
+  <span class="kt">double</span> <span class="o">*</span><span class="n">m</span><span class="p">,</span> <span class="o">*</span><span class="n">f</span><span class="p">;</span>
+  <span class="n">energy_data</span> <span class="n">p_energy</span><span class="p">;</span>
+  <span class="kt">double</span> <span class="n">time</span><span class="p">,</span> <span class="n">k_energy</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">volume</span><span class="p">,</span> <span class="n">pressure</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">df</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">pressure_available</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">;</span>
+
+  <span class="cm">/* Get arguments passed from Python code */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">PyArg_ParseTuple</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s">&quot;OO!O!O!O!O!ddiO!&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">universe</span><span class="p">,</span>
+			<span class="o">&amp;</span><span class="n">PyArray_Type</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">configuration</span><span class="p">,</span>
+			<span class="o">&amp;</span><span class="n">PyArray_Type</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">velocities</span><span class="p">,</span>
+			<span class="o">&amp;</span><span class="n">PyArray_Type</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">masses</span><span class="p">,</span>
+			<span class="o">&amp;</span><span class="n">PyArray_Type</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">friction</span><span class="p">,</span>
+			<span class="o">&amp;</span><span class="n">PyFFEvaluator_Type</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">evaluator</span><span class="p">,</span>
+			<span class="o">&amp;</span><span class="n">ext_temp</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">delta_t</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">steps</span><span class="p">,</span>
+			<span class="o">&amp;</span><span class="n">PyList_Type</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">spec_list</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+  <span class="cm">/* Obtain the universe specification */</span>
+  <span class="n">universe_spec</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyUniverseSpecObject</span> <span class="o">*</span><span class="p">)</span>
+                   <span class="n">PyObject_GetAttrString</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="s">&quot;_spec&quot;</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">universe_spec</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+  <span class="cm">/* Create the array for energy gradients */</span>
+<span class="cp">#if defined(NUMPY)</span>
+  <span class="n">gradients</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyArrayObject</span> <span class="o">*</span><span class="p">)</span><span class="n">PyArray_Copy</span><span class="p">(</span><span class="n">configuration</span><span class="p">);</span>
+<span class="cp">#else</span>
+  <span class="n">gradients</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyArrayObject</span> <span class="o">*</span><span class="p">)</span><span class="n">PyArray_FromDims</span><span class="p">(</span><span class="n">configuration</span><span class="o">-&gt;</span><span class="n">nd</span><span class="p">,</span>
+						<span class="n">configuration</span><span class="o">-&gt;</span><span class="n">dimensions</span><span class="p">,</span>
+						<span class="n">PyArray_DOUBLE</span><span class="p">);</span>
+<span class="cp">#endif</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">gradients</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+  <span class="cm">/* Create the arrays for random forces */</span>
+<span class="cp">#if defined(NUMPY)</span>
+  <span class="n">random1</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyArrayObject</span> <span class="o">*</span><span class="p">)</span><span class="n">PyArray_Copy</span><span class="p">(</span><span class="n">configuration</span><span class="p">);</span>
+<span class="cp">#else</span>
+  <span class="n">random1</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyArrayObject</span> <span class="o">*</span><span class="p">)</span><span class="n">PyArray_FromDims</span><span class="p">(</span><span class="n">configuration</span><span class="o">-&gt;</span><span class="n">nd</span><span class="p">,</span>
+					      <span class="n">configuration</span><span class="o">-&gt;</span><span class="n">dimensions</span><span class="p">,</span>
+					      <span class="n">PyArray_DOUBLE</span><span class="p">);</span>
+<span class="cp">#endif</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">random1</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">gradients</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="cp">#if defined(NUMPY)</span>
+  <span class="n">random2</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyArrayObject</span> <span class="o">*</span><span class="p">)</span><span class="n">PyArray_Copy</span><span class="p">(</span><span class="n">configuration</span><span class="p">);</span>
+<span class="cp">#else</span>
+  <span class="n">random2</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyArrayObject</span> <span class="o">*</span><span class="p">)</span><span class="n">PyArray_FromDims</span><span class="p">(</span><span class="n">configuration</span><span class="o">-&gt;</span><span class="n">nd</span><span class="p">,</span>
+					      <span class="n">configuration</span><span class="o">-&gt;</span><span class="n">dimensions</span><span class="p">,</span>
+					      <span class="n">PyArray_DOUBLE</span><span class="p">);</span>
+<span class="cp">#endif</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">random2</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">gradients</span><span class="p">);</span>
+    <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">random1</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* Set some convenient variables */</span>
+  <span class="n">atoms</span> <span class="o">=</span> <span class="n">configuration</span><span class="o">-&gt;</span><span class="n">dimensions</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>    <span class="cm">/* number of atoms */</span>
+  <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">vector3</span> <span class="o">*</span><span class="p">)</span><span class="n">configuration</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>      <span class="cm">/* pointer to positions */</span>
+  <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">vector3</span> <span class="o">*</span><span class="p">)</span><span class="n">velocities</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>         <span class="cm">/* pointer to velocities */</span>
+  <span class="n">g</span> <span class="o">=</span> <span class="p">(</span><span class="n">vector3</span> <span class="o">*</span><span class="p">)</span><span class="n">gradients</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>          <span class="cm">/* pointer to energy gradients */</span>
+  <span class="n">rx</span> <span class="o">=</span> <span class="p">(</span><span class="n">vector3</span> <span class="o">*</span><span class="p">)</span><span class="n">random1</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>           <span class="cm">/* pointer to random moves */</span>
+  <span class="n">rv</span> <span class="o">=</span> <span class="p">(</span><span class="n">vector3</span> <span class="o">*</span><span class="p">)</span><span class="n">random2</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>           <span class="cm">/* pointer to random velocities */</span>
+  <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="kt">double</span> <span class="o">*</span><span class="p">)</span><span class="n">friction</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>            <span class="cm">/* pointer to friction constants */</span>
+  <span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="kt">double</span> <span class="o">*</span><span class="p">)</span><span class="n">masses</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">;</span>              <span class="cm">/* pointer to masses */</span>
+  <span class="n">df</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">atoms</span><span class="p">;</span>                            <span class="cm">/* number of degrees of freedom */</span>
+
+  <span class="cm">/* Initial coordinate correction (for periodic universes etc.) */</span>
+  <span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">correction_function</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">geometry_data</span><span class="p">);</span>
+
+  <span class="cm">/* Initial force calculation */</span>
+  <span class="n">p_energy</span><span class="p">.</span><span class="n">gradients</span> <span class="o">=</span> <span class="p">(</span><span class="n">PyObject</span> <span class="o">*</span><span class="p">)</span><span class="n">gradients</span><span class="p">;</span>
+  <span class="n">p_energy</span><span class="p">.</span><span class="n">gradient_fn</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">p_energy</span><span class="p">.</span><span class="n">force_constants</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">p_energy</span><span class="p">.</span><span class="n">fc_fn</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">Py_BEGIN_ALLOW_THREADS</span><span class="p">;</span>
+  <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="p">(</span><span class="o">*</span><span class="n">evaluator</span><span class="o">-&gt;</span><span class="n">eval_func</span><span class="p">)(</span><span class="n">evaluator</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p_energy</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+  <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+  <span class="n">Py_END_ALLOW_THREADS</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">p_energy</span><span class="p">.</span><span class="n">error</span><span class="p">)</span>
+    <span class="k">goto</span> <span class="n">error2</span><span class="p">;</span>
+
+  <span class="cm">/* Check if pressure can be calculated (i.e. the force field implementation</span>
+<span class="cm">     provides the virial and the universe has a finite volume) */</span>
+  <span class="n">Py_BEGIN_ALLOW_THREADS</span><span class="p">;</span>
+  <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="n">volume</span> <span class="o">=</span> <span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">volume_function</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">geometry_data</span><span class="p">);</span>
+  <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+  <span class="n">Py_END_ALLOW_THREADS</span><span class="p">;</span>
+  <span class="n">pressure_available</span> <span class="o">=</span> <span class="n">volume</span> <span class="o">&gt;</span> <span class="mf">0.</span> <span class="o">&amp;&amp;</span> <span class="n">p_energy</span><span class="p">.</span><span class="n">virial_available</span><span class="p">;</span>
+
+  <span class="cm">/* Initialize trajectory output and periodic actions */</span>
+  <span class="n">data_descriptors</span> <span class="o">=</span>
+    <span class="n">get_data_descriptors</span><span class="p">(</span><span class="mi">10</span> <span class="o">+</span> <span class="n">pressure_available</span><span class="p">,</span>
+			 <span class="n">universe_spec</span><span class="p">,</span>
+			 <span class="n">configuration</span><span class="p">,</span> <span class="n">velocities</span><span class="p">,</span>
+			 <span class="n">gradients</span><span class="p">,</span> <span class="n">masses</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">df</span><span class="p">,</span>
+			 <span class="o">&amp;</span><span class="n">time</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p_energy</span><span class="p">.</span><span class="n">energy</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">k_energy</span><span class="p">,</span>
+			 <span class="o">&amp;</span><span class="n">temperature</span><span class="p">,</span>
+			 <span class="n">pressure_available</span> <span class="o">?</span> <span class="o">&amp;</span><span class="n">pressure</span><span class="o">:</span><span class="nb">NULL</span><span class="p">,</span>
+			 <span class="p">(</span><span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">geometry_data_length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span>
+			           <span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">geometry_data</span> <span class="o">:</span> <span class="nb">NULL</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">data_descriptors</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+    <span class="k">goto</span> <span class="n">error2</span><span class="p">;</span>
+  <span class="n">output</span> <span class="o">=</span> <span class="n">PyTrajectory_OutputSpecification</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">spec_list</span><span class="p">,</span>
+					    <span class="s">&quot;Langevin Dynamics&quot;</span><span class="p">,</span>
+					    <span class="n">data_descriptors</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">output</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+    <span class="k">goto</span> <span class="n">error2</span><span class="p">;</span>
+
+  <span class="cm">/* Allow parallel threads and get the universe write state lock */</span>
+  <span class="n">this_thread</span> <span class="o">=</span> <span class="n">PyEval_SaveThread</span><span class="p">();</span>
+  <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+  <span class="cm">/*</span>
+<span class="cm">   * Main integration loop</span>
+<span class="cm">   */</span>
+  <span class="n">time</span>  <span class="o">=</span> <span class="mf">0.</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">steps</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="cm">/* Calculation of thermodynamic properties */</span>
+    <span class="n">k_energy</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">atoms</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span>
+      <span class="n">k_energy</span> <span class="o">+=</span> <span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">]);</span>
+    <span class="n">k_energy</span> <span class="o">*=</span> <span class="mf">0.5</span><span class="p">;</span>
+    <span class="n">temperature</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">k_energy</span><span class="o">/</span><span class="p">(</span><span class="n">df</span><span class="o">*</span><span class="n">kB</span><span class="p">);</span>
+    <span class="n">pressure</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">k_energy</span><span class="o">+</span><span class="n">p_energy</span><span class="p">.</span><span class="n">virial</span><span class="o">/</span><span class="p">(</span><span class="mf">3.</span><span class="o">*</span><span class="n">volume</span><span class="p">);</span>
+
+    <span class="cm">/* Trajectory and log output */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">PyTrajectory_Output</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">data_descriptors</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">this_thread</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">);</span>
+      <span class="n">PyEval_RestoreThread</span><span class="p">(</span><span class="n">this_thread</span><span class="p">);</span>
+      <span class="k">goto</span> <span class="n">error</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* Calculation of random forces */</span>
+    <span class="n">random_forces</span><span class="p">(</span><span class="n">rx</span><span class="p">,</span> <span class="n">rv</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">ext_temp</span><span class="p">,</span> <span class="n">delta_t</span><span class="p">);</span>
+
+    <span class="cm">/* First part of integration step */</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">atoms</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kt">double</span> <span class="n">ft</span> <span class="o">=</span> <span class="n">delta_t</span><span class="o">*</span><span class="n">f</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">];</span>
+      <span class="kt">double</span> <span class="n">c0</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">+</span><span class="n">ft</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span><span class="o">+</span><span class="n">ft</span><span class="o">*</span><span class="p">(</span><span class="mf">0.5</span><span class="o">+</span><span class="n">ft</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span><span class="o">/</span><span class="mf">6.</span><span class="o">+</span><span class="n">ft</span><span class="o">/</span><span class="mf">24.</span><span class="p">)));</span>
+      <span class="kt">double</span> <span class="n">c1</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">+</span><span class="n">ft</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="o">+</span><span class="n">ft</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">6.</span><span class="o">-</span><span class="n">ft</span><span class="o">/</span><span class="mf">24.</span><span class="p">));</span>
+      <span class="kt">double</span> <span class="n">c2</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">+</span><span class="n">ft</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span><span class="o">/</span><span class="mf">6.</span><span class="o">+</span><span class="n">ft</span><span class="o">/</span><span class="mf">24.</span><span class="p">);</span>
+      <span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">delta_t</span><span class="o">*</span><span class="p">(</span><span class="n">c1</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">c2</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">])</span><span class="o">+</span><span class="n">rx</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">];</span>
+      <span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">delta_t</span><span class="o">*</span><span class="p">(</span><span class="n">c1</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">c2</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">])</span><span class="o">+</span><span class="n">rx</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">];</span>
+      <span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">delta_t</span><span class="o">*</span><span class="p">(</span><span class="n">c1</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">c2</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">])</span><span class="o">+</span><span class="n">rx</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">];</span>
+      <span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">c0</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="p">(</span><span class="n">c2</span><span class="o">-</span><span class="n">c1</span><span class="p">)</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">+</span><span class="n">rv</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">];</span>
+      <span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">c0</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="p">(</span><span class="n">c2</span><span class="o">-</span><span class="n">c1</span><span class="p">)</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">+</span><span class="n">rv</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">];</span>
+      <span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">c0</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">+</span><span class="p">(</span><span class="n">c2</span><span class="o">-</span><span class="n">c1</span><span class="p">)</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">+</span><span class="n">rv</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">];</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* Coordinate correction (for periodic universes etc.) */</span>
+    <span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">correction_function</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">universe_spec</span><span class="o">-&gt;</span><span class="n">geometry_data</span><span class="p">);</span>
+
+    <span class="cm">/* Mid-step force evaluation */</span>
+    <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">);</span>
+    <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="p">(</span><span class="o">*</span><span class="n">evaluator</span><span class="o">-&gt;</span><span class="n">eval_func</span><span class="p">)(</span><span class="n">evaluator</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p_energy</span><span class="p">,</span> <span class="n">configuration</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">p_energy</span><span class="p">.</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">PyEval_RestoreThread</span><span class="p">(</span><span class="n">this_thread</span><span class="p">);</span>
+      <span class="k">goto</span> <span class="n">error</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+    <span class="cm">/* Second part of integration step */</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">atoms</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kt">double</span> <span class="n">ft</span> <span class="o">=</span> <span class="n">delta_t</span><span class="o">*</span><span class="n">f</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">];</span>
+      <span class="kt">double</span> <span class="n">c2</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">+</span><span class="n">ft</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span><span class="o">/</span><span class="mf">6.</span><span class="o">+</span><span class="n">ft</span><span class="o">/</span><span class="mf">24.</span><span class="p">);</span>
+      <span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="n">c2</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">];</span>
+      <span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-=</span> <span class="n">c2</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">];</span>
+      <span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">-=</span> <span class="n">c2</span><span class="o">*</span><span class="n">delta_t</span><span class="o">*</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">];</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* The End - next time step! */</span>
+    <span class="n">time</span> <span class="o">+=</span> <span class="n">delta_t</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="cm">/** End of main integration loop **/</span>
+
+  <span class="cm">/* Final thermodynamic property evaluation */</span>
+  <span class="n">k_energy</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">atoms</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span>
+    <span class="n">k_energy</span> <span class="o">+=</span> <span class="n">m</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">]);</span>
+  <span class="n">k_energy</span> <span class="o">*=</span> <span class="mf">0.5</span><span class="p">;</span>
+  <span class="n">temperature</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">k_energy</span><span class="o">/</span><span class="p">(</span><span class="n">df</span><span class="o">*</span><span class="n">kB</span><span class="p">);</span>
+  <span class="n">pressure</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">k_energy</span><span class="o">+</span><span class="n">p_energy</span><span class="p">.</span><span class="n">virial</span><span class="o">/</span><span class="p">(</span><span class="mf">3.</span><span class="o">*</span><span class="n">volume</span><span class="p">);</span>
+
+  <span class="cm">/* Final trajectory and log output */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">PyTrajectory_Output</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">data_descriptors</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">this_thread</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">);</span>
+    <span class="n">PyEval_RestoreThread</span><span class="p">(</span><span class="n">this_thread</span><span class="p">);</span>
+    <span class="k">goto</span> <span class="n">error</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* Cleanup */</span>
+  <span class="n">PyUniverseSpec_StateLock</span><span class="p">(</span><span class="n">universe_spec</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">);</span>
+  <span class="n">PyEval_RestoreThread</span><span class="p">(</span><span class="n">this_thread</span><span class="p">);</span>
+  <span class="n">PyTrajectory_OutputFinish</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">data_descriptors</span><span class="p">);</span>
+  <span class="n">free</span><span class="p">(</span><span class="n">data_descriptors</span><span class="p">);</span>
+  <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">gradients</span><span class="p">);</span>
+  <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">random1</span><span class="p">);</span>
+  <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">random2</span><span class="p">);</span>
+  <span class="n">Py_INCREF</span><span class="p">(</span><span class="n">Py_None</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">Py_None</span><span class="p">;</span>
+
+  <span class="cm">/* Error return */</span>
+<span class="nl">error:</span>
+  <span class="n">PyTrajectory_OutputFinish</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">data_descriptors</span><span class="p">);</span>
+<span class="nl">error2:</span>
+  <span class="n">free</span><span class="p">(</span><span class="n">data_descriptors</span><span class="p">);</span>
+  <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">gradients</span><span class="p">);</span>
+  <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">random1</span><span class="p">);</span>
+  <span class="n">Py_DECREF</span><span class="p">(</span><span class="n">random2</span><span class="p">);</span>
+  <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="cm">/*</span>
+<span class="cm"> * List of functions defined in the module</span>
+<span class="cm"> */</span>
+
+<span class="k">static</span> <span class="n">PyMethodDef</span> <span class="n">langevin_methods</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="p">{</span><span class="s">&quot;integrateLD&quot;</span><span class="p">,</span> <span class="n">integrateLD</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span>
+  <span class="p">{</span><span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">}</span>		<span class="cm">/* sentinel */</span>
+<span class="p">};</span>
+
+<span class="cm">/* Initialization function for the module */</span>
+
+<span class="kt">void</span>
+<span class="nf">initMMTK_langevin</span><span class="p">()</span>
+<span class="p">{</span>
+  <span class="n">PyObject</span> <span class="o">*</span><span class="n">m</span><span class="p">,</span> <span class="o">*</span><span class="n">dict</span><span class="p">;</span>
+  <span class="n">PyObject</span> <span class="o">*</span><span class="n">universe</span><span class="p">,</span> <span class="o">*</span><span class="n">trajectory</span><span class="p">,</span> <span class="o">*</span><span class="n">forcefield</span><span class="p">,</span> <span class="o">*</span><span class="n">units</span><span class="p">;</span>
+
+  <span class="cm">/* Create the module and add the functions */</span>
+  <span class="n">m</span> <span class="o">=</span> <span class="n">Py_InitModule</span><span class="p">(</span><span class="s">&quot;MMTK_langevin&quot;</span><span class="p">,</span> <span class="n">langevin_methods</span><span class="p">);</span>
+  <span class="n">dict</span> <span class="o">=</span> <span class="n">PyModule_GetDict</span><span class="p">(</span><span class="n">m</span><span class="p">);</span>
+
+  <span class="cm">/* Import the array module */</span>
+  <span class="n">import_array</span><span class="p">();</span>
+
+  <span class="cm">/* Import MMTK modules */</span>
+  <span class="n">import_MMTK_universe</span><span class="p">();</span>
+  <span class="n">import_MMTK_forcefield</span><span class="p">();</span>
+  <span class="n">import_MMTK_trajectory</span><span class="p">();</span>
+
+  <span class="cm">/* Get the Boltzman constant factor from MMTK.Units */</span>
+  <span class="n">units</span> <span class="o">=</span> <span class="n">PyImport_ImportModule</span><span class="p">(</span><span class="s">&quot;MMTK.Units&quot;</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">units</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">module_dict</span> <span class="o">=</span> <span class="n">PyModule_GetDict</span><span class="p">(</span><span class="n">units</span><span class="p">);</span>
+    <span class="n">PyObject</span> <span class="o">*</span><span class="n">factor</span> <span class="o">=</span> <span class="n">PyDict_GetItemString</span><span class="p">(</span><span class="n">module_dict</span><span class="p">,</span> <span class="s">&quot;k_B&quot;</span><span class="p">);</span>
+    <span class="n">kB</span> <span class="o">=</span> <span class="n">PyFloat_AsDouble</span><span class="p">(</span><span class="n">factor</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="cm">/* Check for errors */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">PyErr_Occurred</span><span class="p">())</span>
+    <span class="n">Py_FatalError</span><span class="p">(</span><span class="s">&quot;can&#39;t initialize module MMTK_langevin&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../../_sources/Examples/LangevinDynamics/MMTK_langevin.c.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

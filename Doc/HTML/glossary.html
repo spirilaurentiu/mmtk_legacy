@@ -1,0 +1,152 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Glossary &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="index.html" />
+    <link rel="next" title="Code Examples" href="examples.html" />
+    <link rel="prev" title="MMTK User’s Guide" href="mmtk.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="examples.html" title="Code Examples"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="mmtk.html" title="MMTK User’s Guide"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="glossary">
+<h1>Glossary<a class="headerlink" href="#glossary" title="Permalink to this headline">¶</a></h1>
+<dl class="glossary docutils">
+<dt id="term-abstract-base-class">Abstract base class</dt>
+<dd>A <a class="reference internal" href="#term-base-class"><em class="xref std std-term">Base Class</em></a> that is not
+directly usable by itself, but which defines the common properties
+of several subclasses. Example: the class
+<a class="reference internal" href="modules.html#MMTK.ChemicalObjects.ChemicalObject" title="MMTK.ChemicalObjects.ChemicalObject"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.ChemicalObject</span></tt></a> is
+an abstract base class which defines the common properties of its
+subclasses <a class="reference internal" href="modules.html#MMTK.ChemicalObjects.Atom" title="MMTK.ChemicalObjects.Atom"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.Atom</span></tt></a>,
+<a class="reference internal" href="modules.html#MMTK.ChemicalObjects.Group" title="MMTK.ChemicalObjects.Group"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.Group</span></tt></a>,
+<a class="reference internal" href="modules.html#MMTK.ChemicalObjects.Molecule" title="MMTK.ChemicalObjects.Molecule"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.Molecule</span></tt></a>,
+<tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicaObjects.Complex</span></tt>, and
+<a class="reference internal" href="modules.html#MMTK.ChemicalObjects.AtomCluster" title="MMTK.ChemicalObjects.AtomCluster"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.AtomCluster</span></tt></a>. A <a class="reference internal" href="#term-mix-in-class"><em class="xref std std-term">Mix-in class</em></a>
+is a special kind of abstract base class.</dd>
+<dt id="term-base-class">Base class</dt>
+<dd>A class from which another class inherits. In most
+cases, the inheriting class is a specialization of the base class.
+For example, the class <a class="reference internal" href="modules.html#MMTK.ChemicalObjects.Molecule" title="MMTK.ChemicalObjects.Molecule"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.Molecule</span></tt></a> is a
+base class of <a class="reference internal" href="modules.html#MMTK.Proteins.PeptideChain" title="MMTK.Proteins.PeptideChain"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Proteins.PeptideChain</span></tt></a>,
+because peptide chains are special molecules. Another common
+application is the <a class="reference internal" href="#term-abstract-base-class"><em class="xref std std-term">Abstract base class</em></a>.</dd>
+<dt id="term-mix-in-class">Mix-in class</dt>
+<dd>A class that is used as a <a class="reference internal" href="#term-base-class"><em class="xref std std-term">Base class</em></a>
+in other classes with the sole intention of providing methods
+that are common to these classes. Mix-in classes cannot be used
+to create instances. They are a special kind of
+<a class="reference internal" href="#term-abstract-base-class"><em class="xref std std-term">Abstract base class</em></a>.
+Example: class <a class="reference internal" href="modules.html#MMTK.Collections.GroupOfAtoms" title="MMTK.Collections.GroupOfAtoms"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Collections.GroupOfAtoms</span></tt></a>.</dd>
+<dt id="term-subclass">Subclass</dt>
+<dd>A class that has another class as its <a class="reference internal" href="#term-base-class"><em class="xref std std-term">Base class</em></a>.
+The subclass is usually a specialization of the base class, and can
+use all of the methods defined in the base class.
+Example: class <a class="reference internal" href="modules.html#MMTK.Proteins.Residue" title="MMTK.Proteins.Residue"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.Proteins.Residue</span></tt></a> is
+a subclass of <a class="reference internal" href="modules.html#MMTK.ChemicalObjects.Group" title="MMTK.ChemicalObjects.Group"><tt class="xref py py-class docutils literal"><span class="pre">MMTK.ChemicalObjects.Group</span></tt></a>.</dd>
+</dl>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="mmtk.html"
+                        title="previous chapter">MMTK User&#8217;s Guide</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="examples.html"
+                        title="next chapter">Code Examples</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/glossary.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="examples.html" title="Code Examples"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="mmtk.html" title="MMTK User’s Guide"
+             >previous</a> |</li>
+        <li><a href="index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

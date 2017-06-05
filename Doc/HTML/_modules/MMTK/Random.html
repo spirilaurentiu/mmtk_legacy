@@ -1,0 +1,296 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MMTK.Random &mdash; MMTK User Guide 2.7.7 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '2.7.7',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MMTK User Guide 2.7.7 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for MMTK.Random</h1><div class="highlight"><pre>
+<span class="c"># Functions for finding random points and orientations.</span>
+<span class="c">#</span>
+<span class="c"># Written by: Konrad Hinsen</span>
+<span class="c"># </span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Random quantities for use in molecular simulations</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;restructuredtext&#39;</span>
+
+<span class="kn">from</span> <span class="nn">Scientific.Geometry</span> <span class="kn">import</span> <span class="n">Vector</span>
+<span class="kn">from</span> <span class="nn">Scientific.Geometry.Transformation</span> <span class="kn">import</span> <span class="n">Rotation</span>
+<span class="kn">from</span> <span class="nn">Scientific</span> <span class="kn">import</span> <span class="n">N</span>
+<span class="kn">from</span> <span class="nn">MMTK</span> <span class="kn">import</span> <span class="n">ParticleProperties</span><span class="p">,</span> <span class="n">Units</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">numeric</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">package</span>
+<span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+    <span class="n">numeric</span> <span class="o">=</span> <span class="s">&quot;Numeric&quot;</span>
+
+<span class="n">RNG</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">numeric</span> <span class="o">==</span> <span class="s">&quot;Numeric&quot;</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">RNG</span>
+    <span class="k">elif</span> <span class="n">numeric</span> <span class="o">==</span> <span class="s">&quot;NumPy&quot;</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">numpy.oldnumeric.rng</span> <span class="kn">as</span> <span class="nn">RNG</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+
+<span class="k">if</span> <span class="n">RNG</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+
+    <span class="k">if</span> <span class="n">numeric</span> <span class="o">==</span> <span class="s">&quot;Numeric&quot;</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">RandomArray</span> <span class="kn">import</span> <span class="n">uniform</span><span class="p">,</span> <span class="n">seed</span>
+    <span class="k">elif</span> <span class="n">numeric</span> <span class="o">==</span> <span class="s">&quot;NumPy&quot;</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">numpy.oldnumeric.random_array</span> <span class="kn">import</span> <span class="n">uniform</span><span class="p">,</span> <span class="n">seed</span>
+    <span class="n">random</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="s">&#39;random&#39;</span><span class="p">)</span>
+    <span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">initializeRandomNumbersFromTime</span><span class="p">():</span>
+        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">()</span>
+        <span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">std</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">normalvariate</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">N</span><span class="o">.</span><span class="n">Float</span><span class="p">)</span>
+            <span class="n">xflat</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">xflat</span><span class="p">)):</span>
+                <span class="n">xflat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">normalvariate</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mean</span> <span class="o">+</span> <span class="n">std</span><span class="o">*</span><span class="n">x</span>
+
+<span class="k">else</span><span class="p">:</span>
+
+    <span class="n">_uniform_generator</span> <span class="o">=</span> \
+                    <span class="n">RNG</span><span class="o">.</span><span class="n">CreateGenerator</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">RNG</span><span class="o">.</span><span class="n">UniformDistribution</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+    <span class="n">_gaussian_generator</span> <span class="o">=</span> \
+                    <span class="n">RNG</span><span class="o">.</span><span class="n">CreateGenerator</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">RNG</span><span class="o">.</span><span class="n">NormalDistribution</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">initializeRandomNumbersFromTime</span><span class="p">():</span>
+        <span class="k">global</span> <span class="n">_uniform_generator</span><span class="p">,</span> <span class="n">_gaussian_generator</span>
+        <span class="n">_uniform_generator</span> <span class="o">=</span> \
+                       <span class="n">RNG</span><span class="o">.</span><span class="n">CreateGenerator</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">RNG</span><span class="o">.</span><span class="n">UniformDistribution</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+        <span class="n">_gaussian_generator</span> <span class="o">=</span> \
+                       <span class="n">RNG</span><span class="o">.</span><span class="n">CreateGenerator</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">RNG</span><span class="o">.</span><span class="n">NormalDistribution</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">uniform</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">_uniform_generator</span><span class="o">.</span><span class="n">ranf</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">multiply</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">_uniform_generator</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">x</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
+        <span class="k">return</span> <span class="n">x1</span><span class="o">+</span><span class="p">(</span><span class="n">x2</span><span class="o">-</span><span class="n">x1</span><span class="p">)</span><span class="o">*</span><span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">std</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">_gaussian_generator</span><span class="o">.</span><span class="n">ranf</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">multiply</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">_gaussian_generator</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">x</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
+        <span class="k">return</span> <span class="n">mean</span><span class="o">+</span><span class="n">std</span><span class="o">*</span><span class="n">x</span>
+
+<span class="k">del</span> <span class="n">numeric</span>
+
+<span class="c">#</span>
+<span class="c"># Random point in a rectangular box centered around the origin</span>
+<span class="c">#</span>
+<div class="viewcode-block" id="randomPointInBox"><a class="viewcode-back" href="../../modules.html#MMTK.Random.randomPointInBox">[docs]</a><span class="k">def</span> <span class="nf">randomPointInBox</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param a: the edge length of a box along the x axis</span>
+<span class="sd">    :type a: float</span>
+<span class="sd">    :param b: the edge length of a box along the y axis (default: a)</span>
+<span class="sd">    :type b: float</span>
+<span class="sd">    :param c: the edge length of a box along the z axis (default: a)</span>
+<span class="sd">    :type c: float</span>
+<span class="sd">    :returns: a vector drawn from a uniform distribution within a</span>
+<span class="sd">              rectangular box with edge lengths a, b, c.</span>
+<span class="sd">    :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">b</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span>
+    <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">a</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="n">b</span><span class="p">,</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="n">c</span><span class="p">,</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">c</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Vector</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Random point in a sphere around the origin.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="randomPointInSphere"><a class="viewcode-back" href="../../modules.html#MMTK.Random.randomPointInSphere">[docs]</a><span class="k">def</span> <span class="nf">randomPointInSphere</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param r: the radius of a sphere</span>
+<span class="sd">    :type r: float</span>
+<span class="sd">    :returns: a vector drawn from a uniform distribution within</span>
+<span class="sd">              a sphere of radius r.</span>
+<span class="sd">    :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rsq</span> <span class="o">=</span> <span class="n">r</span><span class="o">*</span><span class="n">r</span>
+    <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">r</span><span class="p">,</span> <span class="n">r</span><span class="p">),</span> <span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">r</span><span class="p">,</span> <span class="n">r</span><span class="p">),</span> <span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">r</span><span class="p">,</span> <span class="n">r</span><span class="p">)])</span>
+        <span class="k">if</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">rsq</span><span class="p">:</span> <span class="k">break</span>
+    <span class="k">return</span> <span class="n">Vector</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c">#</span>
+<span class="c"># Random direction (unit vector).</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="randomDirection"><a class="viewcode-back" href="../../modules.html#MMTK.Random.randomDirection">[docs]</a><span class="k">def</span> <span class="nf">randomDirection</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :returns: a vector drawn from a uniform distribution on the surface</span>
+<span class="sd">              of a unit sphere.</span>
+<span class="sd">    :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">randomPointInSphere</span><span class="p">(</span><span class="mf">1.</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="randomDirections"><a class="viewcode-back" href="../../modules.html#MMTK.Random.randomDirections">[docs]</a><span class="k">def</span> <span class="nf">randomDirections</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param n: the number of direction vectors</span>
+<span class="sd">    :returns: a list of n vectors drawn from a uniform distribution on</span>
+<span class="sd">              the surface of a unit sphere. If n is negative, returns</span>
+<span class="sd">              a deterministic list of not more than -n vectors of unit</span>
+<span class="sd">              length (useful for testing purposes).</span>
+<span class="sd">    :rtype: list</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">vs</span> <span class="o">=</span> <span class="p">[</span><span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">),</span>
+              <span class="n">Vector</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span><span class="o">.</span><span class="n">normal</span><span class="p">(),</span> <span class="n">Vector</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span><span class="o">.</span><span class="n">normal</span><span class="p">(),</span>
+              <span class="n">Vector</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">)</span><span class="o">.</span><span class="n">normal</span><span class="p">(),</span> <span class="n">Vector</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span><span class="o">.</span><span class="n">normal</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="n">vs</span><span class="p">[:</span><span class="o">-</span><span class="n">n</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">randomDirection</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+
+<span class="c">#</span>
+<span class="c"># Random rotation.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="randomRotation"><a class="viewcode-back" href="../../modules.html#MMTK.Random.randomRotation">[docs]</a><span class="k">def</span> <span class="nf">randomRotation</span><span class="p">(</span><span class="n">max_angle</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">pi</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param max_angle: the upper limit for the rotation angle</span>
+<span class="sd">    :type max_angle: float</span>
+<span class="sd">    :returns: a random rotation with a uniform axis distribution</span>
+<span class="sd">              and angles drawn from a uniform distribution between</span>
+<span class="sd">              -max_angle and max_angle.</span>
+<span class="sd">    :rtype: Scientific.Geometry.Transformations.Rotation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Rotation</span><span class="p">(</span><span class="n">randomDirection</span><span class="p">(),</span> <span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">max_angle</span><span class="p">,</span> <span class="n">max_angle</span><span class="p">))</span>
+
+<span class="c">#</span>
+<span class="c"># Random velocity (gaussian)</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="randomVelocity"><a class="viewcode-back" href="../../modules.html#MMTK.Random.randomVelocity">[docs]</a><span class="k">def</span> <span class="nf">randomVelocity</span><span class="p">(</span><span class="n">temperature</span><span class="p">,</span> <span class="n">mass</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param temperature: the temperature defining a Maxwell distribution</span>
+<span class="sd">    :type temperature: float</span>
+<span class="sd">    :param mass: the mass of a particle</span>
+<span class="sd">    :type mass: float</span>
+<span class="sd">    :returns: a random velocity vector for a particle of a given mass</span>
+<span class="sd">              at a given temperature</span>
+<span class="sd">    :rtype: Scientific.Geometry.Vector</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">temperature</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">k_B</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">mass</span><span class="o">*</span><span class="n">Units</span><span class="o">.</span><span class="n">amu</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">Vector</span><span class="p">(</span><span class="n">gaussian</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,)))</span>
+
+<span class="c">#</span>
+<span class="c"># Random ParticleVector (gaussian)</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="randomParticleVector"><a class="viewcode-back" href="../../modules.html#MMTK.Random.randomParticleVector">[docs]</a><span class="k">def</span> <span class="nf">randomParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">width</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param universe: a universe</span>
+<span class="sd">    :type universe: :class:`~MMTK.Universe.Universe`</span>
+<span class="sd">    :param width: the width (standard deviation) of a Gaussian distribution</span>
+<span class="sd">    :type width: float</span>
+<span class="sd">    :returns: a set of vectors drawn from a Gaussian distribution</span>
+<span class="sd">              with a given width centered  around zero.</span>
+<span class="sd">    :rtype: :class:`~MMTK.ParticleProperties.ParticleVector`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">gaussian</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.577350269189</span><span class="o">*</span><span class="n">width</span><span class="p">,</span> <span class="p">(</span><span class="n">universe</span><span class="o">.</span><span class="n">numberOfPoints</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">ParticleProperties</span><span class="o">.</span><span class="n">ParticleVector</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">MMTK User Guide 2.7.7 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, Konrad Hinsen.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
